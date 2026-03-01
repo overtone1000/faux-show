@@ -1,0 +1,25 @@
+[Unit]
+Description=Shmashmexa
+
+[Container]
+ContainerName=shmashmexa
+Image=localhost/shmashmexa
+
+#Set time to be the same as host machine
+Mount=type=bind,source=/etc/timezone,destination=/etc/timezone,ro=true
+Mount=type=bind,source=/etc/localtime,destination=/etc/localtime,ro=true
+
+#For saving persistent config
+Volume=shmashmexa_config.volume:/config
+
+[Service]
+Restart=always
+
+#Default for systemd is 90 seconds. This allows the container more time to start.
+TimeoutStartSec=900
+#Wait 10 seconds before attempting a restart
+RestartSec=10
+
+[Install]
+# Start by default on boot
+WantedBy=default.target
