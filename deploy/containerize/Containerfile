@@ -1,0 +1,12 @@
+#Stage 1: Build
+FROM docker.io/library/rust:alpine AS builder
+WORKDIR /app
+COPY ./Shmashmexa/backend ./Shmashmexa/backend
+COPY ./trm-rust-libs ./trm-rust-libs
+WORKDIR /app/Shmashmexa/backend
+RUN cargo build --release
+
+# Stage 2: Run
+FROM docker.io/library/alpine:latest
+COPY --from=builder /app/Shmashmexa/backend/target/release /bin/shmashmexa
+CMD ["/bin/shmashmexa/shmashmexa-backend"]

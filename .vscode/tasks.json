@@ -26,15 +26,9 @@
         },
         {
             "type": "shell",
-            "command": "cargo",
-            "args": [
-                "run",
-                "--",
-                "30125",
-                "443"
-            ],
+            "command": "cargo run",
             "group": "build",
-            "label": "Cargo: Run With Test Args",
+            "label": "Cargo: Run",
             "problemMatcher": [
                 "$rustc"
             ],

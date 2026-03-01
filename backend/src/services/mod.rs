@@ -1,2 +1,2 @@
-pub mod external;
-pub mod internal;
+pub(crate) mod external;
+pub(crate) mod internal;
