@@ -48,7 +48,7 @@
 
     let refresh:TabProps = {
         action: () => {
-            throw new Error('Function not implemented.');
+            location.reload();
         },
         icon_label: "refresh",
         icon_path: mdiRefresh
