@@ -71,6 +71,7 @@
             <iframe class="full-width" src={main.meta.url} title={main.meta.title}>
                 <p>iframe unsupported</p>
             </iframe>
+            <div class="hide-cursor"></div>
         {/if}
     {/if}
 </div>
@@ -101,4 +102,12 @@
         flex-shrink: true;
         width:100%;
     }
+    
+    /*This is for kiosks, so hide the cursor*/
+    /*Doesn't work with iframe!*/
+    /*
+    * {
+        cursor: none;
+    }
+    */
 </style>
