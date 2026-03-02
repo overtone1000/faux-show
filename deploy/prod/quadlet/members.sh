@@ -7,6 +7,7 @@ QUADLET_MEMBERS=(
     #Resources next
     shmashmexa_config-volume
     #Container builds
+    shmashmexa-build
     #Containers in dependency order
     shmashmexa
 )

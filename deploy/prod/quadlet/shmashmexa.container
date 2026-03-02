@@ -1,13 +1,25 @@
 [Unit]
 Description=Shmashmexa
+Wants=network.target
+#Wants=network-online.target For rootless
 
 [Container]
 ContainerName=shmashmexa
 Image=localhost/shmashmexa
 
+#Internal web server
+PublishPort=30125:30125
+
+#Internal websocket
+PublishPort=30126:30126
+
+#External REST service
+PublishPort=443:443
+
 #Set time to be the same as host machine
-Mount=type=bind,source=/etc/timezone,destination=/etc/timezone,ro=true
-Mount=type=bind,source=/etc/localtime,destination=/etc/localtime,ro=true
+#Doesn't exist on nixos!
+#Mount=type=bind,source=/etc/timezone,destination=/etc/timezone,ro=true
+#Mount=type=bind,source=/etc/localtime,destination=/etc/localtime,ro=true
 
 #For saving persistent config
 Volume=shmashmexa_config.volume:/config

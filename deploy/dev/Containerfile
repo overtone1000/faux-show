@@ -1,0 +1,4 @@
+FROM docker.io/library/alpine:latest
+COPY ../../backend/target/release /bin/shmashmexa
+COPY ../../frontend/build /var/www/internal/
+CMD ["/bin/shmashmexa/shmashmexa-backend"]
