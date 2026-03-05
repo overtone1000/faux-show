@@ -1,7 +1,7 @@
 
 use hyper::{body::Incoming, Method, Request, Response};
 use hyper_services::{
-    commons::HandlerResult, request_processing::get_request_body_as_string, response_building::{bad_request, full_to_boxed_body}, service::{stateless_service::StatelessHandler}
+    commons::HandlerResult, request_processing::get_request_body_as_string, response_building::{bad_request, bytes_to_boxed_body}, service::{stateless_service::StatelessHandler}
 };
 #[derive(Clone)]
 pub struct ExternalService {
@@ -24,13 +24,13 @@ impl StatelessHandler for ExternalService {
 
                 println!("Received POST {:?} with body {:?}",parts.uri, body);
 
-                return Ok(Response::new(full_to_boxed_body("Ok")));
+                return Ok(Response::new(bytes_to_boxed_body("Ok")));
             },
             Method::GET => {
 
                 println!("Received GET for {:?}",parts.uri);
 
-                return Ok(Response::new(full_to_boxed_body("Ok")));
+                return Ok(Response::new(bytes_to_boxed_body("Ok")));
             },
             method=>{
                 eprintln!("Received unexpected method {:?}",method);

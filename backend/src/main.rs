@@ -5,7 +5,7 @@ const DEV_MODE_ENV_KEY:&str="DEVELOPMENT_MODE";
 async fn main() {
 
     //Currently doesn't do anything. May remove later.
-    let _development_mode = match std::env::var(DEV_MODE_ENV_KEY)
+    let development_mode = match std::env::var(DEV_MODE_ENV_KEY)
     {
         Ok(val)=>{
             println!("Running in development mode.");

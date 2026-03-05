@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "shmashmexa-backend"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "hyper",
  "hyper-services",
@@ -586,6 +586,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "websocket",
 ]
 
 [[package]]
@@ -836,6 +837,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9517f9239f02c069db75e65f174b3da828fe5f5b945c4dd26bd25d89c03ebcf5"
 dependencies = [
  "wit-bindgen",
+]
+
+[[package]]
+name = "websocket"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "hyper-tungstenite",
+ "hyper-util",
 ]
 
 [[package]]

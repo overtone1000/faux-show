@@ -5,9 +5,11 @@ use std::
     net::{IpAddr, Ipv4Addr}
 ;
 
+use hyper_services::service::stateful_service::StatefulService;
 use hyper_services::service::stateless_service::StatelessService;
 use hyper_services::spawn_server;
 
+use crate::services::external::ExternalService;
 use crate::services::internal::InternalService;
 
 const INTERNAL_SERVICE_DIR:&str="/var/www/internal";
@@ -22,9 +24,9 @@ pub async fn start_and_run() {
         //Create event servers
         let internal_service = {
 
-            let internal_service:StatelessService<InternalService>=StatelessService::create();
-            println!("Internal service created.");
-
+            let handler = InternalService{};
+            let internal_service=StatefulService::create(handler);
+            
             spawn_server(
                 IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 INTERNAL_PORT,
@@ -34,7 +36,7 @@ pub async fn start_and_run() {
 
         let external_service = {
 
-            let external_service:StatelessService<InternalService>=StatelessService::create();
+            let external_service:StatelessService<ExternalService>=StatelessService::create();
             println!("External service created.");
 
             spawn_server(
