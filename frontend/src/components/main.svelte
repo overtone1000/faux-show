@@ -6,6 +6,8 @@
     import IconTab, { type TabProps } from './icon_tab.svelte';
 	import { onMount } from 'svelte';
 
+    console.debug("Start init.");
+
     enum MainField {
         iframe
     };
@@ -58,7 +60,7 @@
     tabs[1].action();
 
     onMount(()=>{
-        const socket_url = "ws:/"+location.host;
+        const socket_url = "ws:/"+location.hostname+":30126";
         console.debug("Opening websocket on");
         const socket = new WebSocket(socket_url);
 
@@ -73,6 +75,8 @@
             console.log("Message from server ", event.data);
         });
     });
+
+    console.debug("End init.");
 
 </script>
 
