@@ -24,8 +24,9 @@
 <style>
     .iconbutton{
         border-radius: 5%;
-        width:48px;
-        height:48px;
+        /*width:48px;*/
+        height:100%;
+        aspect-ratio: 1;
         align-self: center;
         margin:2px;
         padding:0px;
