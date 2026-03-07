@@ -24,43 +24,18 @@
 
     let main:Main|undefined = $state(undefined);
 
-    let tabs:TabProps[] =
-    [
-        {
-			action: function (): void {
-				throw new Error('Function not implemented.');
-			},
-			icon_label: "weather",
-			icon_path: mdiWeatherCloudy
-		},
-        {
-			action:  () => {
-                console.debug("cameras");
-				main={
-                    field: MainField.iframe,
-                    meta:{
-                        url:"http://10.10.10.10:8123/dashboard-cameras/0",
-                        title: "Dashboard Cameras"
-                    }
-                }
-			},
-			icon_label: "cameras",
-			icon_path: mdiCctv
-		},
-    ];
-
-    let refresh:TabProps = {
+    let tabs:TabProps[]|undefined = $state(undefined);
+    
+    const refresh:TabProps = {
         action: () => {
             location.reload();
         },
         icon_label: "refresh",
         icon_path: mdiRefresh
     };
-    
-    tabs[1].action();
 
-    onMount(()=>{
-        const socket_url = "ws:/"+location.hostname+":30126";
+    function open_socket(){
+        const socket_url = "ws:/"+location.host;
         console.debug("Opening websocket on");
         const socket = new WebSocket(socket_url);
 
@@ -74,6 +49,91 @@
         socket.addEventListener("message", (event) => {
             console.log("Message from server ", event.data);
         });
+    };
+
+    type TabsConfig = {
+        label:string,
+        title:string,
+        icon_path:string,
+        url:string
+    };
+
+    function build_tabs(tabs_config:TabsConfig[]) {
+        /*
+            [
+                {
+                    action: function (): void {
+                        throw new Error('Function not implemented.');
+                    },
+                    icon_label: "weather",
+                    icon_path: mdiWeatherCloudy
+                },
+                {
+                    action:  () => {
+                        console.debug("cameras");
+                        main={
+                            field: MainField.iframe,
+                            meta:{
+                                url:"http://10.10.10.10:8123/dashboard-kiosk/1",
+                                title: "Dashboard Cameras"
+                            }
+                        }
+                    },
+                    icon_label: "cameras",
+                    icon_path: mdiCctv
+                },
+            ];
+        */
+
+        if(tabs_config.length>0)
+        {
+            tabs = [];
+
+            for(const tabconfig of tabs_config)
+            {
+                tabs.push(
+                    {
+                        icon_label: tabconfig.label,
+                        icon_path: tabconfig.icon_path,
+                        action: ()=>{
+                            main={
+                                field: MainField.iframe,
+                                meta:{
+                                    url: tabconfig.url,
+                                    title: tabconfig.title
+                                }
+                            }
+                        }
+                    }
+                );
+            }
+
+            //Default to zero
+            tabs[0].action();
+        }
+    }
+
+    async function get_tabs() {
+        const url = location.origin+"/config/tabs.json";
+        console.debug("Getting tabs from " + url);
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Response status: ${response.status}`);
+            }
+            else
+            {
+                const result = await response.json();
+                build_tabs(result);
+            }
+        } catch (error:any) {
+            console.error(error.message);
+        }
+    }
+
+    onMount(()=>{
+        open_socket();
+        get_tabs();
     });
 
     console.debug("End init.");
