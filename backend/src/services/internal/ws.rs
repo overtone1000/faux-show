@@ -16,7 +16,7 @@ pub struct InternalWSService {
 
 impl InternalWSService
 {
-    pub fn new(initialization_parameters:&crate::InitializationParameters)->InternalWSService
+    pub fn new()->InternalWSService
     {
         InternalWSService { 
         }

@@ -56,7 +56,7 @@ pub async fn start_and_run(params:InitializationParameters) {
 
         let internal_ws_service = {
 
-            let handler = InternalWSService::new(&params);
+            let handler = InternalWSService::new();
             let internal_service=StatefulService::create(handler);
             
             spawn_server(
