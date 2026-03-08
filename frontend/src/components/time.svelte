@@ -50,8 +50,8 @@
 </script>
 
 <div class="main">
-    <div>{time.getHours()+":"+format_doubledigit(time.getMinutes())}</div>
-    <div>{months[time.getMonth()] + " " + time.getDate() + ", " + time.getFullYear()}</div>
+    <div class="second time">{time.getHours()+":"+format_doubledigit(time.getMinutes())}</div>
+    <div class="second date">{months[time.getMonth()] + " " + time.getDate() + ", " + time.getFullYear()}</div>
 </div>
 
 <style>
@@ -67,5 +67,17 @@
         min-width: 400px;
         width: 400px;
         max-width: 400px;
+    }
+    .second
+    {
+        text-align: center;
+    }
+    .time
+    {
+        width: 28%;
+    }
+    .date
+    {
+        width:72%
     }
 </style>
