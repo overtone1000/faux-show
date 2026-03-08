@@ -3,6 +3,8 @@
     import { mdiRefresh } from '@mdi/js';
     import IconTab, { type TabProps } from './icon_tab.svelte';
 	import { onMount } from 'svelte';
+	import Time from './time.svelte';
+	import TimerPage, { type TimeState as TimerState } from './timer_page.svelte';
 
     console.debug("Start init.");
 
@@ -27,6 +29,8 @@
     };
 
     let main:Main|undefined = $state(undefined);
+
+    const timer_state:TimerState = $state({});
 
     let tabs:TabProps[]|undefined = $state(undefined);
     
@@ -137,6 +141,8 @@
         <div class="spacer"></div>
         <IconTab props={clock}/>
         <div class="spacer"></div>
+        <Time/>
+        <div class="spacer"></div>
         <IconTab props={refresh}/>
     </div>
     {#if main !== undefined}
@@ -146,10 +152,9 @@
             </iframe>
             <div class="hide-cursor"></div>
         {:else if main.field === MainField.component && main.component_meta !== undefined}
-            {if main.component_meta === ComponentType.clock}
-            {
-                
-            }
+            {#if main.component_meta === ComponentType.clock}
+                <TimerPage state={timer_state}/>
+            {/if}
         {/if}
     {/if}
 </div>
