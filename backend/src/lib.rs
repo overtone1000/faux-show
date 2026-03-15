@@ -5,10 +5,11 @@ use std::
     net::{IpAddr, Ipv4Addr}
 ;
 
+use hyper_services::request_processing::Auth;
+use hyper_services::service::certificates::generate_simple_certificates;
+use hyper_services::service::spawn::ConnectionProperties;
 use hyper_services::service::stateful_service::StatefulService;
 use hyper_services::service::stateless_service::StatelessService;
-use hyper_services::{ConnectionProperties};
-use rustls::pki_types::pem::PemObject;
 
 use crate::services::external::ExternalService;
 use crate::services::internal::InternalService;
@@ -19,18 +20,20 @@ pub struct InitializationParameters
     internal_service_static_directory:String,
     config_static_directory:String,
     internal_port:u16,
-    external_port:u16
+    external_port:u16,
+    auth:Auth
 }
 
 impl InitializationParameters
 {
-    pub fn new(internal_service_static_directory:&str, config_static_directory:&str, internal_port:u16, external_port:u16)->InitializationParameters
+    pub fn new(internal_service_static_directory:&str, config_static_directory:&str, internal_port:u16, external_port:u16, auth:Auth)->InitializationParameters
     {
         InitializationParameters { 
             internal_service_static_directory:internal_service_static_directory.to_string(),
             config_static_directory:config_static_directory.to_string(),
             internal_port, 
-            external_port 
+            external_port,
+            auth
         }
     }
 }
@@ -58,25 +61,19 @@ pub async fn start_and_run(params:InitializationParameters) {
 
         let external_service = {
 
-            let service:StatelessService<ExternalService>=StatelessService::create();
+            let handler = ExternalService::new(&params.auth);
+            let service=StatefulService::create(handler);
 
-            match rcgen::generate_simple_self_signed(["10.10.10.154".to_string(),"127.0.0.1".to_string(),"localhost".to_string()])
+            match generate_simple_certificates(["*".to_string()])
             {
                 Ok(keypair)=>{
                     
-                    let certs =  vec![rustls::pki_types::CertificateDer::from(keypair.cert)];
-                    let keys = rustls::pki_types::PrivateKeyDer::from(keypair.signing_key);
-
-                    let certs:hyper_services::TlsCerts = hyper_services::TlsCerts{
-                        certs,
-                        keys
-                    };
                     service.start(
                         IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                         params.external_port,
                         ConnectionProperties{
                             with_upgrades:false,
-                            tls:Some(certs)
+                            tls:Some(keypair)
                         }
                     )
                 },

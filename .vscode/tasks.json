@@ -46,7 +46,9 @@
             "options": {
                 "cwd":"backend",
                 "env": {
-                    "DEVELOPMENT_MODE":"true"
+                    "DEVELOPMENT_MODE":"true",
+                    "EXTERNAL_USER":"shmashmexa_test_user",
+                    "EXTERNAL_PASSWORD":"shmashmexa_test_password"
                 }
             }
         },

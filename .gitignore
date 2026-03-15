@@ -15,3 +15,4 @@ target
 
 .direnv
 secrets.md
+.env

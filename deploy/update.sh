@@ -3,6 +3,7 @@
 set -e
 
 source "./constants.sh"
+source "./secrets.sh"
 
 LOCAL_QUADLET_DIR=$REPO_DIR/deploy/prod/quadlet
 
@@ -94,6 +95,18 @@ start_quadlet() {
 #    clear_from_remote $REMOTE_TRM_RUST_LIB_DIR
 #}
 
+set_secret() {
+    echo "Setting $1 to ${2}"
+    #For simple secrets, use -n to avoid the new line at the end of the secret
+    ssh -T $SSH_DEST "echo -n '${2}' | podman secret create --replace $1 -"
+}
+
+set_secrets() {
+    set_secret external_user $EXTERNAL_USER
+    set_secret external_password $EXTERNAL_PASSWORD
+}
+
+set_secrets
 update_source
 build_backend
 copy_build_result

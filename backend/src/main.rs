@@ -1,7 +1,11 @@
+use hyper_services::request_processing::Auth;
 use shmashmexa_backend::InitializationParameters;
 
 
 const DEV_MODE_ENV_KEY:&str="DEVELOPMENT_MODE";
+
+const EXTERNAL_USER_ENV_KEY:&str="EXTERNAL_USER";
+const EXTERNAL_PASSWORD_ENV_KEY:&str="EXTERNAL_PASSWORD";
 
 const PROD_INTERNAL_SERVICE_DIR:&str="/var/www/internal";
 const PROD_CONFIG_DIR:&str="/var/www/config";
@@ -15,8 +19,7 @@ const DEV_EXTERNAL_PORT:u16=8443;
 
 #[tokio::main]
 async fn main() {
-
-    //Currently doesn't do anything. May remove later.
+  
     let dev_mode:bool = match std::env::var(DEV_MODE_ENV_KEY)
     {
         Ok(val)=>{
@@ -27,15 +30,42 @@ async fn main() {
         }
     };
 
+    let user:String = match std::env::var(EXTERNAL_USER_ENV_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide external username as an environment variable.");
+            return;
+        }
+    };
+
+    let password:String = match std::env::var(EXTERNAL_PASSWORD_ENV_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide external password as an environment variable.");
+            return;
+        }
+    };
+
+    let auth:Auth=Auth{
+        user,
+        password
+    };
+
     let params:InitializationParameters=match dev_mode
     {
         true=>{
             println!("Running in development mode.");
-            InitializationParameters::new(DEV_INTERNAL_SERVICE_DIR,DEV_CONFIG_DIR,DEV_INTERNAL_PORT,DEV_EXTERNAL_PORT)
+            InitializationParameters::new(DEV_INTERNAL_SERVICE_DIR,DEV_CONFIG_DIR,DEV_INTERNAL_PORT,DEV_EXTERNAL_PORT,auth)
         },
         false=>{
             println!("Running in production mode.");
-            InitializationParameters::new(PROD_INTERNAL_SERVICE_DIR,PROD_CONFIG_DIR,PROD_INTERNAL_PORT,PROD_EXTERNAL_PORT)
+            InitializationParameters::new(PROD_INTERNAL_SERVICE_DIR,PROD_CONFIG_DIR,PROD_INTERNAL_PORT,PROD_EXTERNAL_PORT,auth)
         }
     };
 

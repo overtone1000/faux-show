@@ -28,6 +28,9 @@ PublishPort=443:443
 #For saving persistent config
 Volume=shmashmexa_config.volume:/config
 
+Secret=external_user,type=env,target=EXTERNAL_USER
+Secret=external_password,type=env,target=EXTERNAL_PASSWORD
+
 [Service]
 Restart=always
 
