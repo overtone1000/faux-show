@@ -3,21 +3,23 @@ use hyper::{body::Incoming, Method, Request, Response};
 use hyper_services::{
     commons::HandlerResult, request_processing::{Auth, collect_incoming}, response_building::{bad_request, bytes_to_boxed_body}, service::{stateful_service::StatefulHandler, stateless_service::StatelessHandler}
 };
+use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{commands::Command, services::internal::InternalService};
+use crate::{commands::Command};
 
 #[derive(Clone)]
 pub struct ExternalService {
     auth:Auth,
-    internal_handler:InternalService
+    //internal_handler:InternalService
+    command_sender:UnboundedSender<Command>
 }
 
 impl ExternalService {
-    pub fn new(auth:&Auth,internal_handler:&InternalService) -> ExternalService
+    pub fn new(auth:&Auth,command_sender:UnboundedSender<Command>) -> ExternalService
     {
         ExternalService{
             auth:auth.clone(),
-            internal_handler:internal_handler.clone()
+            command_sender
         }
     }
 
@@ -59,7 +61,14 @@ impl StatefulHandler for ExternalService {
                                     };
                                     
                                     println!("Got command {:?}, passing to internal service",deserialized);
-                                    self.internal_handler.push_command(deserialized).await;
+                                    match self.command_sender.send(deserialized)
+                                    {
+                                        Ok(_)=>(),
+                                        Err(e)=>{
+                                            eprintln!("Error during internal command processing. {:?}",e);
+                                            return Ok(bad_request());
+                                        }
+                                    }
                                 },
                                 key=>{
                                     println!("Unexpected key-value pair {}:{}",key,value);

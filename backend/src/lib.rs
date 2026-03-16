@@ -43,8 +43,10 @@ pub async fn start_and_run(params:InitializationParameters) {
         
         println!("Starting services.");
 
-        let internal_handler = InternalService::new(&params);
-        let external_handler = ExternalService::new(&params.auth,&internal_handler);
+        let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel::<commands::Command>();
+
+        let internal_handler = InternalService::new(&params, std::sync::Arc::new(tokio::sync::Mutex::new(command_receiver)));
+        let external_handler = ExternalService::new(&params.auth,command_sender);
 
         let internal_service= StatefulService::create(internal_handler);
         let external_service = StatefulService::create(external_handler);

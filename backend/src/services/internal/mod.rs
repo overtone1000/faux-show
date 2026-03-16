@@ -1,14 +1,19 @@
 use std::{collections::VecDeque, sync::Arc, time::{Duration, Instant}};
 
-use hyper::{body::Incoming, Method, Request, Response};
+use futures_util::stream::{SplitSink, SplitStream};
+use hyper::{Method, Request, Response, body::Incoming, upgrade::Upgraded};
 use hyper_services::{
     commons::HandlerResult, request_processing::get_request_body_as_string, response_building::{bad_request, box_existing_full, box_existing_response, bytes_to_boxed_body}, service::stateful_service::StatefulHandler
 };
 
 use hyper_tungstenite::{HyperWebsocket, WebSocketStream, tungstenite};
-use tokio::sync::Mutex;
+use hyper_util::rt::TokioIo;
+use tokio::sync::{Mutex, mpsc::{self, UnboundedReceiver, UnboundedSender}};
 use tungstenite::Message;
 use websocket::WebSocketStreamNext;
+
+use futures_util::SinkExt;
+use futures_util::StreamExt;
 
 use crate::commands::Command;
 
@@ -18,64 +23,73 @@ const CONFIG_PREFACE:&str="/config";
 pub struct InternalService {
     internal_service_static_directory:String,
     config_static_directory:String,
-    commands:Arc<Mutex<VecDeque<Command>>>
+    command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>
 }
 
 impl InternalService
 {
-    pub fn new(initialization_parameters:&crate::InitializationParameters)->InternalService
-    {
+    pub fn new(initialization_parameters:&crate::InitializationParameters, command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>)->InternalService
+    {        
         InternalService { 
             internal_service_static_directory: initialization_parameters.internal_service_static_directory.clone(),
             config_static_directory: initialization_parameters.config_static_directory.clone(),
-            commands:Arc::new(Mutex::new(VecDeque::new()))
+            command_receiver
         }
     }
 
     pub async fn push_command(&mut self, command:Command)->()
     {
-        let mut commands = self.commands.lock().await;
-        commands.push_back(command);
-        //println!("Added: Commands now contains {} commands.",commands.len());
+        todo!()
     }
 
-    async fn handle_websocket(self, websocket: HyperWebsocket) -> () {       
+    //commands:Arc<Mutex<VecDeque<Command>>>
+    async fn handle_websocket_sink(command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>, mut sink:SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>)->()
+    {
+        println!("Starting websocket sink handler.");
+        let mut command_receiver= command_receiver.lock().await;
 
-        use futures_util::stream::StreamExt;
-        use futures_util::SinkExt;
-
-        println!("Serving websocket");
-        let mut websocketstream = match websocket.await{
-            Ok(websocketstream) => websocketstream,
-            Err(e) => {
-                eprintln!("Websocket error: {:?}",e);
-                return;
-            },
-        };
-
-        let target_wait = Duration::from_millis(100);
-
-        loop
-        {
-            let loop_start = std::time::Instant::now();
-
-            println!("Awaiting next, but this blocks until a message arrives.");
-            match websocketstream.next().
+        loop {
+            match command_receiver.recv().await
             {
-                Some(stream_next) => {    
-                    match stream_next {
-                        Ok(msg)=>{
-                            match msg
+                Some(command)=>{
+                    match serde_json::to_string(&command)
+                    {
+                        Ok(command_as_string)=>{
+                            //println!("Sending command.");
+                            match sink.send(Message::text(command_as_string)).await
                             {
+                                Ok(_)=>{
+                                    println!("Command sent via websocket.");
+                                },
+                                Err(e)=>{
+                                    eprintln!("Websocket error: {:?}",e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Couldn't deserialize command. {:?}",e);
+                        },
+                    }
+                },
+                None=>return //stream has closed, exit
+            }
+        }
+    }
+
+    async fn handle_websocket_stream(mut stream:SplitStream<WebSocketStream<TokioIo<Upgraded>>>)->()
+    {
+        println!("Starting websocket stream handler.");
+        
+        loop {
+            match stream.next().await
+            {
+                Some(stream_next)=>{
+                    match stream_next {
+                        Ok(stream_next)=>{
+                            match stream_next {
                                 Message::Text(msg) => {
+                                    //Don't really do anything with messages from the client yet.
                                     println!("Received text message: {msg}");
-                                    match websocketstream.send(Message::text("Ok")).await
-                                    {
-                                        Ok(_)=>(),
-                                        Err(e)=>{
-                                            eprintln!("Websocket error: {:?}",e);
-                                        }
-                                    }
                                 },
                                 Message::Ping(_)=>println!("Ping"),
                                 Message::Pong(_)=>println!("Pong"),
@@ -84,44 +98,51 @@ impl InternalService
                         },
                         Err(e) => {
                             eprintln!("Websocket error: {:?}",e);
-                            return;
+                            return
                         },
-                    }            
-                },
-                None => (),
-            }
-
-            println!("Processing commands.");
-            let mut commands = self.commands.lock().await;
-            while commands.len()>0
-            {
-                println!("Commands to process.");
-                match commands.pop_front()
-                {
-                    Some(command)=>{
-                        match serde_json::to_string(&command)
-                        {
-                            Ok(command_as_string)=>{
-                                //println!("Sending command.");
-                                match websocketstream.send(Message::text(command_as_string)).await
-                                {
-                                    Ok(_)=>{
-                                        println!("Command sent via websocket.");
-                                    },
-                                    Err(e)=>{
-                                        eprintln!("Websocket error: {:?}",e);
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!("Couldn't deserialize command. {:?}",e);
-                            },
-                        }
-                    },
-                    None=>()
+                    }
                 }
-            }
+                None=>return //stream is done, exit
+            }            
+        }
+    }
 
+    async fn handle_websocket(self, websocket: HyperWebsocket) -> () {       
+
+        println!("Serving websocket");
+        let websocketstream = match websocket.await{
+            Ok(websocketstream) => websocketstream,
+            Err(e) => {
+                eprintln!("Websocket error: {:?}",e);
+                return;
+            },
+        };
+
+        let (sink,stream) =websocketstream.split();
+        let command_receiver = self.command_receiver;        
+
+        let sink_handler = tokio::spawn(async move {Self::handle_websocket_sink(command_receiver, sink).await});
+        let stream_handler = tokio::spawn(async move {Self::handle_websocket_stream(stream).await});
+
+        match tokio::try_join!(sink_handler, stream_handler)
+        {
+            Ok(_) => println!("Websockets closed gracefully."),
+            Err(e) => {
+                println!("Websocket Failure");
+                println!("{}", e.to_string());
+            }
+        }
+        
+        /*
+        let target_wait = Duration::from_millis(100);
+
+        loop
+        {
+            let loop_start = std::time::Instant::now();
+
+            
+
+            
             let wait = match loop_start.checked_add(target_wait)
             {
                 Some(wait)=>wait.duration_since(Instant::now()),
@@ -130,6 +151,9 @@ impl InternalService
 
             //tokio::time::sleep(wait);
         }
+        */
+
+
     }
 }
 
