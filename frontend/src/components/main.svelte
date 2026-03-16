@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import Time from './time.svelte';
 	import TimerPage, { type Timer, type TimerState as TimerState } from './timer_page.svelte';
+	import type { Command } from '$lib/commands';
 
     console.debug("Start init.");
 
@@ -53,8 +54,17 @@
         icon_path: mdiClock
     };
 
-    type Command = {
-        
+    function handle_server_command(command:Command)
+    {
+        console.debug("Handling command.");
+        if(command.ChangeDash)
+        {
+            console.debug("Changing dash to " + command.ChangeDash.index);
+            if(tabs !== undefined && tabs[command.ChangeDash.index] !== undefined)
+            {
+                tabs[command.ChangeDash.index].action();
+            }
+        }
     }
 
     function open_socket(){
@@ -77,6 +87,7 @@
         // Listen for messages
         socket.addEventListener("message", (event) => {
             console.log("Message from server ", event.data);
+            handle_server_command(JSON.parse(event.data));
         });
     };
 

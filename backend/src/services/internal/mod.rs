@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, sync::Arc, time::{Duration, Instant}};
+use std::{collections::{HashMap, HashSet, VecDeque}, sync::Arc, thread::current, time::{Duration, Instant}};
 
 use futures_util::stream::{SplitSink, SplitStream};
 use hyper::{Method, Request, Response, body::Incoming, upgrade::Upgraded};
@@ -23,7 +23,9 @@ const CONFIG_PREFACE:&str="/config";
 pub struct InternalService {
     internal_service_static_directory:String,
     config_static_directory:String,
-    command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>
+    command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
+    sinks:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,
+    sink_handler:Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>
 }
 
 impl InternalService
@@ -33,17 +35,14 @@ impl InternalService
         InternalService { 
             internal_service_static_directory: initialization_parameters.internal_service_static_directory.clone(),
             config_static_directory: initialization_parameters.config_static_directory.clone(),
-            command_receiver
+            command_receiver,
+            sinks:Arc::new(Mutex::new(HashMap::new())),
+            sink_handler:Arc::new(Mutex::new(None))
         }
     }
 
-    pub async fn push_command(&mut self, command:Command)->()
-    {
-        todo!()
-    }
-
     //commands:Arc<Mutex<VecDeque<Command>>>
-    async fn handle_websocket_sink(command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>, mut sink:SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>)->()
+    async fn handle_websocket_sink(command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>, mut sink:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,)->()
     {
         println!("Starting websocket sink handler.");
         let mut command_receiver= command_receiver.lock().await;
@@ -55,14 +54,17 @@ impl InternalService
                     match serde_json::to_string(&command)
                     {
                         Ok(command_as_string)=>{
-                            //println!("Sending command.");
-                            match sink.send(Message::text(command_as_string)).await
+                            let mut locked_sinks = sink.lock().await;
+                            for (_key,sink) in &mut *locked_sinks
                             {
-                                Ok(_)=>{
-                                    println!("Command sent via websocket.");
-                                },
-                                Err(e)=>{
-                                    eprintln!("Websocket error: {:?}",e);
+                                match sink.send(Message::text(command_as_string.clone())).await
+                                {
+                                    Ok(_)=>{
+                                        println!("Command sent via websocket.");
+                                    },
+                                    Err(e)=>{
+                                        eprintln!("Websocket send error: {:?}",e);
+                                    }
                                 }
                             }
                         }
@@ -71,7 +73,11 @@ impl InternalService
                         },
                     }
                 },
-                None=>return //stream has closed, exit
+                None=>{
+                    //stream has closed, exit
+                    println!("Command receiver has closed. Closing sink handler.");
+                    return;
+                }
             }
         }
     }
@@ -102,7 +108,11 @@ impl InternalService
                         },
                     }
                 }
-                None=>return //stream is done, exit
+                None=>{
+                    //stream is done, exit
+                    println!("Stream has closed. Closing stream handler.");
+                    return 
+                }
             }            
         }
     }
@@ -121,39 +131,61 @@ impl InternalService
         let (sink,stream) =websocketstream.split();
         let command_receiver = self.command_receiver;        
 
-        let sink_handler = tokio::spawn(async move {Self::handle_websocket_sink(command_receiver, sink).await});
-        let stream_handler = tokio::spawn(async move {Self::handle_websocket_stream(stream).await});
+        //Add the sink to the sink vector. Make sure a sink handler is running. If it is, let it continue.
+        let sink_key={
+            let mut sinks = self.sinks.lock().await;
+            let mut current_handler = self.sink_handler.lock().await;
 
-        match tokio::try_join!(sink_handler, stream_handler)
-        {
-            Ok(_) => println!("Websockets closed gracefully."),
-            Err(e) => {
-                println!("Websocket Failure");
-                println!("{}", e.to_string());
-            }
-        }
-        
-        /*
-        let target_wait = Duration::from_millis(100);
-
-        loop
-        {
-            let loop_start = std::time::Instant::now();
-
-            
-
-            
-            let wait = match loop_start.checked_add(target_wait)
+            let mut sink_key=0u64;
+            while sinks.contains_key(&sink_key)
             {
-                Some(wait)=>wait.duration_since(Instant::now()),
-                None=>target_wait
+                sink_key+=1;
+            }
+            sinks.insert(sink_key,sink);
+
+            match *current_handler
+            {
+                Some(_) => (),
+                None => {
+                    let sinksclone=self.sinks.clone();
+                    *current_handler=Some(tokio::spawn(async move {Self::handle_websocket_sink(command_receiver, sinksclone).await}))
+                },
             };
 
-            //tokio::time::sleep(wait);
+            sink_key
+        };
+
+       match tokio::spawn(async move {Self::handle_websocket_stream(stream).await}).await
+       {
+            Ok(_)=>(),
+            Err(e) => {
+                eprintln!("Websocket error: {:?}",e);
+                return;
+            },
+       }
+
+       println!("Closed websocket. Cleaning up.");
+
+       //Remove the sink from the sink vec
+       {
+            let mut sinks = self.sinks.lock().await;
+            let mut current_handler = self.sink_handler.lock().await;
+
+            sinks.remove(&sink_key);
+
+            if sinks.len()<=0
+            {
+                match &*current_handler
+                {
+                    Some(handler) => handler.abort(),
+                    None => ()
+                }
+            }
+
+            *current_handler=None
         }
-        */
 
-
+       //If there are no more sinks, stop the sink handler
     }
 }
 
