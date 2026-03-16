@@ -5,7 +5,7 @@ set -e
 source "./constants.sh"
 source "./secrets.sh"
 
-LOCAL_QUADLET_DIR=$REPO_DIR/deploy/prod/quadlet
+LOCAL_QUADLET_DIR=$REPO_DIR/deploy/quadlet
 
 LOCAL_BACKEND_SRC_DIR=$REPO_DIR/backend
 LOCAL_FRONTEND_SRC_DIR=$REPO_DIR/frontend/build
@@ -27,6 +27,7 @@ clear_from_remote() {
 }
 
 sync_to_server () {
+    echo "Syncing $1 to $SSH_DEST:$2"
     ssh -T $SSH_DEST "mkdir -p $2"
     rsync -avP --delete $1 $SSH_DEST:$2
 }
@@ -102,11 +103,20 @@ set_secret() {
 }
 
 set_secrets() {
+    if [ -z "$SERVER_IP" ]; then
+        echo "SERVER_IP environment variable must be set to username in secrets.sh"
+    return 1
+    fi
+
+    if [ -z "$EXTERNAL_PASSWORD" ]; then
+        echo "EXTERNAL_PASSWORD environment variable must be set to the ip address of the target device in secrets.sh"
+    return 2
+    fi
     set_secret external_user $EXTERNAL_USER
     set_secret external_password $EXTERNAL_PASSWORD
 }
 
-set_secrets
+#set_secrets
 update_source
 build_backend
 copy_build_result

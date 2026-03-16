@@ -1,13 +1,24 @@
 #!/bin/bash
 
+source "./.env"
+
 IMAGE_NAME=shmashmexa
-#USER=tyler
-USER=root
 
-#SERVER_IP=10.10.10.155 #This is hard wired but will predominantly use wifi
-SERVER_IP=10.10.30.252
+if [ -z "$SERVER_USER" ]; then
+  echo "SERVER_USER environment variable must be set to username in .env"
+  return 1
+else
+  echo "SERVER_USER is $SERVER_USER"
+fi
 
-SSH_DEST=$USER@$SERVER_IP
+if [ -z "$SERVER_IP" ]; then
+  echo "SERVER_IP environment variable must be set to the ip address of the target device in .env"
+  return 2
+else
+  echo "SERVER_IP is $SERVER_IP"
+fi
+
+SSH_DEST=$SERVER_USER@$SERVER_IP
 
 #Not using rootless here.
 #REMOTE_QUADLET_DIR="/home/$USER/.config/containers/systemd/$IMAGE_NAME"
@@ -15,4 +26,4 @@ SSH_DEST=$USER@$SERVER_IP
 #Using rootful.
 REMOTE_QUADLET_DIR="/etc/containers/systemd/$IMAGE_NAME"
 
-REPO_DIR="../.."
+REPO_DIR=".."
