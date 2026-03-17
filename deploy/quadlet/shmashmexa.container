@@ -26,7 +26,7 @@ PublishPort=443:443
 #Mount=type=bind,source=/etc/localtime,destination=/etc/localtime,ro=true
 
 #For saving persistent config
-Volume=shmashmexa_config.volume:/config
+Volume=shmashmexa_config.volume:/var/www/config
 
 Secret=external_user,type=env,target=EXTERNAL_USER
 Secret=external_password,type=env,target=EXTERNAL_PASSWORD
