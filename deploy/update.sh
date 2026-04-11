@@ -117,7 +117,7 @@ set_secrets() {
 }
 
 #set_secrets
-#update_source
-#build_backend
+update_source
+build_backend
 copy_build_result
-#start_quadlet
+start_quadlet
