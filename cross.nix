@@ -1,11 +1,23 @@
 # for cross compiling backend
-with import <nixpkgs> {
-  #Defines architecture of target system
-  crossSystem = {
-    config = "aarch64-unknown-linux-gnu";
+let
+  nixpkgs_release = "25.11";
+
+  #This is the build system architecture
+  build = "x86_64-linux";
+  
+  #This is the targeted architecture
+  host = "aarch64-linux";
+
+  nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/release-${nixpkgs_release}";
+  
+  pkgs = import nixpkgs {
+    crossSystem = {
+      config = host;
+    };
   };
-};
-mkShell {
+in
+
+pkgs.mkShell {
     name = "cross-environment";
 
     #Architecture of target system is aarch64-multiplatform if it's a 64 bit raspberry pi
