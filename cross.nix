@@ -4,7 +4,7 @@ let
 
   #This is the build system architecture
   build = "x86_64-linux";
-  
+
   #This is the targeted architecture
   host = "aarch64-linux";
 
@@ -22,10 +22,16 @@ pkgs.mkShell {
 
     #Architecture of target system is aarch64-multiplatform if it's a 64 bit raspberry pi
     nativeBuildInputs = [
-      pkgs.pkgsCross.aarch64-multiplatform.rustc
-      pkgs.pkgsCross.aarch64-multiplatform.cargo
-      pkgs.pkgsCross.aarch64-multiplatform.pkg-config
-      pkgs.pkgsCross.aarch64-multiplatform.gcc
+      pkgs.rustc
+      pkgs.cargo
+      pkgs.pkg-config
+      pkgs.gcc
+
+      #With crossSystem, don't need to use pkgsCross? Trying.
+      #pkgs.pkgsCross.aarch64-multiplatform.rustc
+      #pkgs.pkgsCross.aarch64-multiplatform.cargo
+      #pkgs.pkgsCross.aarch64-multiplatform.pkg-config
+      #pkgs.pkgsCross.aarch64-multiplatform.gcc
     ];
 
     # Certain Rust tools won't work without this
@@ -36,6 +42,9 @@ pkgs.mkShell {
 
     #CC = "aarch64-linux-gnu-gcc";
     #CXX = "aarch64-linux-gnu-g++";
+
+    #Can use this environment variable instead of changing target linkiner in .cargo/config.toml
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gcc";
 }
 
 # try with nix-shell build.nix --run "cargo build --release --target aarch64-unknown-linux-gnu"
