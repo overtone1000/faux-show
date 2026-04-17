@@ -114,7 +114,7 @@
     {
         display: flex;
         flex-direction: column;
-        height: 150px;
+        height: 16mm;
     }
     .spacer
     {

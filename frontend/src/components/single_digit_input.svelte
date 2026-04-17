@@ -57,7 +57,7 @@
         height: 40%;
         align-content: center;
         text-align: center;
-        font-size: 12em;
+        font-size: 8em;
     }
     .arrow
     {
