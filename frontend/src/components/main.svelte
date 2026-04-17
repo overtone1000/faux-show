@@ -196,7 +196,8 @@
     .tab-row
     {
         width: 100%;
-        height: 5%;
+        /*Make height absolute for touch device*/
+        height: 16mm;
         display:flex;
         flex-direction: row;
     }

@@ -47,25 +47,32 @@
     {
         white-space: nowrap;
         font-family: Inter;
-        font-size: xx-large;
+        font-size: 14mm;
         display:flex;
         flex-direction:row;
+        flex-grow: 1;
         justify-content: space-between;
         align-items: center;
         min-width: 400px;
         width: 400px;
         max-width: 400px;
+        height: 100%;
+        max-height: 100%;
     }
     .second
     {
         text-align: center;
+        flex-grow: 1;
     }
     .time
     {
-        width: 28%;
+        /*width: 28%;*/
+        margin-right: 5mm;
+        justify-content: center;
+        align-items: center;
     }
     .date
     {
-        width:72%
+        /*width:72%*/
     }
 </style>
