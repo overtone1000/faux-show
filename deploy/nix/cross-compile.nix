@@ -52,4 +52,4 @@ commons.cross_pkgs.rustPlatform.buildRustPackage {
   cargoLock.lockFile = source+"/Cargo.lock"; 
 }
 
-# try with nix-build ./nix/cross-compile.nix in repo root
+# try with nix-build ./deploy/nix/cross-compile.nix in repo root
