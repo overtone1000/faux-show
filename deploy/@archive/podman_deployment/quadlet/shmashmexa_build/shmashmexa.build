@@ -1,10 +1,10 @@
 [Build]
-ImageTag=localhost/shmashmexa
+ImageTag=localhost/faux_show
 
 #Set the working directory to the path of the unit file expecting to find a Containerfile/Dockerfile + other files needed to build the image
 #If the Dockerfile is in the same directory as the .build file, just set this equal to "."
 SetWorkingDirectory=".."
-File="./shmashmexa_build/Containerfile"
+File="./faux_show_build/Containerfile"
 
 [Quadlet]
 #This should allow the volume service to start faster by skipping network dependencies.

@@ -1,5 +1,5 @@
 use hyper_services::request_processing::Auth;
-use shmashmexa_backend::InitializationParameters;
+use faux_show_backend::InitializationParameters;
 
 
 const DEV_MODE_ENV_KEY:&str="DEVELOPMENT_MODE";
@@ -70,5 +70,5 @@ async fn main() {
     };
 
     println!("Init params {:?}",&params);
-    shmashmexa_backend::start_and_run(params).await
+    faux_show_backend::start_and_run(params).await
 }

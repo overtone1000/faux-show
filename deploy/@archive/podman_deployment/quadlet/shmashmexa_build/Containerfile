@@ -1,0 +1,4 @@
+FROM docker.io/library/alpine:latest
+COPY ./build/faux_show/backend/target/release /bin/faux_show
+COPY ./build/faux_show/frontend/build /var/www/internal/
+CMD ["/bin/faux_show/faux-show-backend"]

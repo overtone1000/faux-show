@@ -11,15 +11,15 @@ LOCAL_BACKEND_SRC_DIR=$REPO_DIR/backend
 LOCAL_FRONTEND_SRC_DIR=$REPO_DIR/frontend/build
 LOCAL_TRM_RUST_LIB_DIR=$REPO_DIR/../trm-rust-libs
 
-REMOTE_BUILD_DIR=~/shmashmexa_build
-REMOTE_BACKEND_SUB=/source/Shmashmexa/backend
+REMOTE_BUILD_DIR=~/faux_show_build
+REMOTE_BACKEND_SUB=/source/faux_show/backend
 TARGET_SUB=/target
 REMOTE_BACKEND_SRC_DIR=${REMOTE_BUILD_DIR}${REMOTE_BACKEND_SUB}
 REMOTE_TRM_RUST_LIB_DIR=$REMOTE_BUILD_DIR/source/trm-rust-libs
 REMOTE_BACKEND_OUTPUT=${REMOTE_BUILD_DIR}${TARGET_SUB}
 
-REMOTE_BACKEND_DIR=$REMOTE_QUADLET_DIR/build/Shmashmexa/backend/target/release
-REMOTE_FRONTEND_DIR=$REMOTE_QUADLET_DIR/build/Shmashmexa/frontend/build
+REMOTE_BACKEND_DIR=$REMOTE_QUADLET_DIR/build/faux_show/backend/target/release
+REMOTE_FRONTEND_DIR=$REMOTE_QUADLET_DIR/build/faux_show/frontend/build
 
 clear_from_remote() {
     echo "Clearing $SSH_DEST:$1"
@@ -74,7 +74,7 @@ start_quadlet() {
     ssh -T $SSH_DEST "systemctl daemon-reload"
 
     #Build can take a long time. Can follow along on a separate ssh session with
-    #journalctl --user -fxeu shmashmexa-build
+    #journalctl --user -fxeu faux_show-build
 
     source $LOCAL_QUADLET_DIR/members.sh
     for MEMBER in ${QUADLET_MEMBERS[@]}

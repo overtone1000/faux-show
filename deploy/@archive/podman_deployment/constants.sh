@@ -2,7 +2,7 @@
 
 source "./.env"
 
-IMAGE_NAME=shmashmexa
+IMAGE_NAME=faux_show
 
 if [ -z "$SERVER_USER" ]; then
   echo "SERVER_USER environment variable must be set to username in .env"

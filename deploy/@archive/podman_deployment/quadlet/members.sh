@@ -5,11 +5,11 @@ set -e
 QUADLET_MEMBERS=(
     #Pod first
     #Resources next
-    shmashmexa_config-volume
+    faux_show_config-volume
     #Container builds
-    shmashmexa-build
+    faux_show-build
     #Containers in dependency order
-    shmashmexa
+    faux_show
 )
 
 echo Quadlet members are: ${QUADLET_MEMBERS[@]}

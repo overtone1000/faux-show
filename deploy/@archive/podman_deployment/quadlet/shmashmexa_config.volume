@@ -1,7 +1,7 @@
 [Volume]
 User=root
 Group=wheel
-VolumeName=shmashmexa_config
+VolumeName=faux_show_config
 
 [Quadlet]
 #This should allow the volume service to start faster by skipping network dependencies.

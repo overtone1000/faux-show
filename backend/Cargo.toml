@@ -1,5 +1,5 @@
 [package]
-name = "shmashmexa-backend"
+name = "faux-show-backend"
 version = "0.3.0"
 edition = "2021"
 
