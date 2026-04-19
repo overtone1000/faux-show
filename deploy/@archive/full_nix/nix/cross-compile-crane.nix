@@ -19,6 +19,17 @@ let
   sources_dir_faux_show="repos/faux_show";
   sources_dir_trm_rust_libs="repos/trm-rust-libs";
 
+  trm_rust_lib_deps = 
+  {
+    src = craneLib.cleanCargoSource trm_rust_libs;
+    strictDeps = true;
+    #These are needed by crane
+    pname = "trm-rust-lib"; #Name of the package of interest
+    version = "0.3.0"; #Package version
+  };
+
+  lib_build_artifacts = craneLib.buildDepsOnly commonArgs;
+
   commonArgs = {
     src = craneLib.cleanCargoSource source;
     strictDeps = true;
@@ -60,11 +71,18 @@ let
 
   # Build *just* the cargo dependencies, so we can reuse
   # all of that work (e.g. via cachix) when running in CI
-  cargo_artifacts = craneLib.buildDepsOnly commonArgs;
+  main_build_artifacts = craneLib.buildDepsOnly (commonArgs // {
+    cargoArtifacts=lib_build_artifacts;
+  });
+  
+  build = craneLib.buildPackage ({
+    cargoArtifacts=main_build_artifacts;
+  }//commonArgs);
+
 in
 
-craneLib.buildPackage (commonArgs // {
-  cargoArtifacts=cargo_artifacts;
-})
+build
 
 # try with nix-build ./deploy/nix/cross-compile.nix in repo root
+# Caching doesn't seem to work for some reason. Always get "cargoArtifacts not set, will not reuse any cargo artifacts" and then it completely rebuilds everything.
+# Probably because of the cross compile approach in commons.nix
