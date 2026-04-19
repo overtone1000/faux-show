@@ -19,7 +19,7 @@ nix.settings.trusted-public-keys = [
 After cross compiling, the build result can be signed and copied
 ```
 nix-build ./nix/cross-compile.nix
-nix --extra-experimental-features nix-command store sign -k ./nix/nix-store-binary-cache-key-secret $(readlink -f result)
+nix --extra-experimental-features nix-command store sign --recursive --key-file ./nix/nix-store-binary-cache-key-secret $(readlink -f result)
 nix --extra-experimental-features nix-command copy --to ssh://$SERVER_IP $(readlink -f result)
 ```
 
