@@ -19,8 +19,22 @@ nix.settings.trusted-public-keys = [
 After cross compiling, the build result can be signed and copied
 ```
 nix-build ./deploy/nix/cross-compile.nix
-nix --extra-experimental-features nix-command store sign --recursive --key-file ./deploy/nix/nix-store-binary-cache-key-secret $(readlink -f result)
-nix --extra-experimental-features nix-command copy --to ssh://$SERVER_IP $(readlink -f result)
+NIX_STORE_DIR=$(readlink -f result)
+nix --extra-experimental-features nix-command store sign --recursive --key-file ./deploy/nix/nix-store-binary-cache-key-secret $NIX_STORE_DIR
+nix --extra-experimental-features nix-command copy --to ssh://$SERVER_IP $NIX_STORE_DIR
+ssh $SERVER_IP "sed -i \"s|nix_store_dir=\\\".*\\\";|nix_store_dir=\\\"$NIX_STORE_DIR\\\";|\" /etc/nixos/trm_nixos/devices/raspberry_pi_kiosk/imports/faux-show-backend.nix"
+```
+
+The package can be added to the NixOS config by adding the store path directly in system packages.
+```
+let
+  nix_store_dir="NIX_STORE_DIR from above"
+in
+{ pkgs, ... }:{
+  environment.systemPackages = [
+    nix_store_dir
+  ];
+}
 ```
 
 ### Deploying Frontent

@@ -52,7 +52,7 @@ pub async fn start_and_run(params:InitializationParameters) {
         let external_service = StatefulService::create(external_handler);
 
         let internal_service_future = internal_service.start(
-            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
             params.internal_port,
             ConnectionProperties{
                 with_upgrades:true,
