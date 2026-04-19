@@ -16,3 +16,6 @@ target
 .direnv
 secrets.md
 .env
+
+#Nix build result
+result

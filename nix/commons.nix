@@ -1,4 +1,4 @@
-# for cross compiling backend
+#commons.nix
 let
   nixpkgs_release = "25.11";
 
@@ -10,22 +10,23 @@ let
 
   nixpkgs = fetchTarball "https://github.com/NixOS/nixpkgs/tarball/release-${nixpkgs_release}";
   
-  pkgs = import nixpkgs {
+  cross_pkgs = import nixpkgs {
     crossSystem = {
       config = host;
     };
   };
 in
-
-pkgs.mkShell {
-    name = "cross-environment";
+{
+  cross_pkgs = cross_pkgs;
+  
+  build_configuration={
 
     #Architecture of target system is aarch64-multiplatform if it's a 64 bit raspberry pi
     nativeBuildInputs = [
-      pkgs.rustc
-      pkgs.cargo
-      pkgs.pkg-config
-      pkgs.gcc
+      cross_pkgs.rustc
+      cross_pkgs.cargo
+      cross_pkgs.pkg-config
+      cross_pkgs.gcc
 
       #With crossSystem, don't need to use pkgsCross? Trying.
       #pkgs.pkgsCross.aarch64-multiplatform.rustc
@@ -37,7 +38,7 @@ pkgs.mkShell {
     # Certain Rust tools won't work without this
     # This can also be fixed by using oxalica/rust-overlay and specifying the rust-src extension
     # See https://discourse.nixos.org/t/rust-src-not-found-and-other-misadventures-of-developing-rust-on-nixos/11570/3?u=samuela. for more details.
-    RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+    #RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
     CARGO_BUILD_TARGET = "aarch64-unknown-linux-gnu";
 
     #CC = "aarch64-linux-gnu-gcc";
@@ -45,6 +46,5 @@ pkgs.mkShell {
 
     #Can use this environment variable instead of changing target linkiner in .cargo/config.toml
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="aarch64-linux-gcc";
+  };
 }
-
-# try with nix-shell build.nix --run "cargo build --release --target aarch64-unknown-linux-gnu"

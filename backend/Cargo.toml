@@ -1,19 +1,13 @@
 [package]
 name = "shmashmexa-backend"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
-
-#Needed?
-[target.aarch64-unknown-linux-gnu]
-linker = "aarch64-linux-gcc"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 hyper = { version = "1", features = ["full"] }
 hyper-services = { path = "../../trm-rust-libs/hyper-services" }
-#hyper-services = { git = "file:///home/tyler/repos/trm-rust-libs/hyper-services" }
 websocket = { path = "../../trm-rust-libs/websocket" }
-#hyper-services = { git = "https://github.com/overtone1000/trm-rust-libs" } #use git for allow building remotely
 hyper-tungstenite = "^0"
 form_urlencoded = "^1"
 futures-util = "^0"
@@ -21,3 +15,6 @@ hyper-util="^0"
 
 serde = "1"
 serde_json = "1"
+
+#hyper-services = { git = "file:///home/tyler/repos/trm-rust-libs/hyper-services" }
+#hyper-services = { git = "https://github.com/overtone1000/trm-rust-libs" } #use git for allow building remotely
