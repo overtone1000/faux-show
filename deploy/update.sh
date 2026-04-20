@@ -8,13 +8,13 @@ SSH_DEST=root@$SERVER_IP
 
 #Build backend
 #nix-shell ./deploy/nix/cross-shell.nix --run "cargo build --release"
-BINARY_DIRECTORY=/root/faux_show/bin
-ssh $SSH_DEST "mkdir -p $BINARY_DIRECTORY"
-rsync --verbose --recursive --progress --delete target/aarch64-unknown-linux-gnu/release/faux-show-backend $SSH_DEST:$BINARY_DIRECTORY
+PROGRAM_DIRECTORY=/root/faux_show
+ssh $SSH_DEST "mkdir -p $BINARY_DIRECTORY/bin"
+rsync --verbose --recursive --progress --delete target/aarch64-unknown-linux-gnu/release/faux-show-backend $SSH_DEST:$PROGRAM_DIRECTORY/bin
 
 #Add env file
-ssh $SSH_DEST "echo EXTERNAL_USER=$EXTERNAL_USER > $BINARY_DIRECTORY/.env"
-ssh $SSH_DEST "echo EXTERNAL_PASSWORD=$EXTERNAL_PASSWORD >> $BINARY_DIRECTORY/.env"
+ssh $SSH_DEST "echo EXTERNAL_USER=$EXTERNAL_USER > $PROGRAM_DIRECTORY/.env"
+ssh $SSH_DEST "echo EXTERNAL_PASSWORD=$EXTERNAL_PASSWORD >> $PROGRAM_DIRECTORY/.env"
 
 #Build frontend
 #npm run-script build --prefix ./frontend
