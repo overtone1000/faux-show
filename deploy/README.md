@@ -1,4 +1,6 @@
-## Nix Deployment
+# Nix Deployment
+
+## Overview
 
 This build approach does the following:
 1. Cross compile and package the backend for Nix using Crane via `flake.nix`.
@@ -9,7 +11,7 @@ This build approach does the following:
 Running the backend as a systemd service is in the _config_ of the device. This is also where pertinent environment variables are set.
 
 
-### Initialization
+## Initializing for Deployment
 
 The build machine must be configured as a nix cache. First, generate a key pair for signing packages:
 ```
@@ -23,31 +25,12 @@ nix.settings.trusted-public-keys = [
 ];
 ```
 
-### Deploying Backend
+## Deploying
 
-After cross compiling, the build result can be signed and copied
-```
-nix build --extra-experimental-features 'nix-command flakes' ./deploy/nix/#
-NIX_STORE_DIR=$(readlink -f result)
-nix --extra-experimental-features nix-command store sign --recursive --key-file ./deploy/nix/nix-store-binary-cache-key-secret $NIX_STORE_DIR
-nix --extra-experimental-features nix-command copy --to ssh://$SERVER_IP $NIX_STORE_DIR
-LINK_TARGET=/root/faux_show/bin/
-ssh $SERVER_IP "mkdir -p $LINK_DIR"
-ssh $SERVER_IP "ln -s "$NIX_STORE_DIR $LINK_DIR/faux-show-backend"
-```
+Deploy from the repo root with:
 
-The package can be added to the NixOS config by adding the store path directly in system packages, but this isn't necessary.
 ```
-let
-  nix_store_dir="NIX_STORE_DIR from above"
-in
-{ pkgs, ... }:{
-  environment.systemPackages = [
-    nix_store_dir
-  ];
-}
+bash ./deploy/scripts/01_build_backend.sh
+bash ./deploy/scripts/02_build_frontend.sh
+bash ./deploy/scripts/03_push_to_device.sh
 ```
-
-### Deploying Frontent
-
-The frontend is simply stored in `/var/www/html/faux_show`
