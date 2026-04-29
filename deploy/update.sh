@@ -8,8 +8,8 @@ source "./deploy/secrets.sh"
 SSH_DEST=tyler@$SERVER_IP
 
 #Build backend
-nix build --extra-experimental-features 'nix-command flakes' ./deploy/nix/#
-
+#nix build --extra-experimental-features 'nix-command flakes' ./deploy/nix/#
+nix copy --to ssh-ng://$SSH_DEST ./deploy/nix/#
 
 PROGRAM_DIRECTORY=/root/faux_show
 ssh -t $SSH_DEST "sudo mkdir -p $BINARY_DIRECTORY/bin"
