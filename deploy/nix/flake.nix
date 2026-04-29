@@ -2,7 +2,7 @@
   description = "Cross compiling a rust program using rust-overlay";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
 
     crane.url = "github:ipetkov/crane";
 
@@ -29,7 +29,7 @@
         crossSystem = "aarch64-linux";
 
         main_source_dir=./../..;
-        trm_rust_libs_source_dir=./../../../trm-rust-libs; #Uses two modules from this
+        #trm_rust_libs_source_dir=./../../../trm-rust-libs; #Uses two modules from this
 
         pkgs = import nixpkgs {
           inherit crossSystem localSystem;
@@ -38,21 +38,11 @@
 
         craneLib = (crane.mkLib pkgs).overrideToolchain (p: p.rust-bin.stable.latest.default);
 
-        trm_libs_expression =
-        {
-          lib,
-          stdenv
-        }:
-        craneLib.buildDepsOnly {
-          src = craneLib.cleanCargoSource trm_rust_libs_source_dir;
-          strictDeps = true;
-        };
-
-        trm_libs = pkgs.callPackage trm_libs_expression { };
-
         commonArgs={
           src = craneLib.cleanCargoSource main_source_dir;
           strictDeps = true;
+          pname = "faux-show-backend"; #Name of the package of interest
+          version = "0.3.0"; #Package version
         };
 
         main_deps_expression =
@@ -60,9 +50,7 @@
           lib,
           stdenv
         }:
-        craneLib.buildDepsOnly (commonArgs // {
-          cargoArtifacts=trm_libs_expression;
-        });
+        craneLib.buildDepsOnly commonArgs;
 
         main_deps = pkgs.callPackage main_deps_expression { };
 
@@ -93,4 +81,5 @@
     );
 }
 
-#nix build --extra-experimental-features 'nix-command flakes' ./deploy/nix/#cross-rust-overlay
+#Run from repo root
+#nix build --extra-experimental-features 'nix-command flakes' ./deploy/nix/#
