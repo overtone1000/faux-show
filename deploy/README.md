@@ -34,3 +34,8 @@ bash ./deploy/scripts/01_build_backend.sh
 bash ./deploy/scripts/02_build_frontend.sh
 bash ./deploy/scripts/03_push_to_device.sh
 ```
+
+### Restart after backend update
+```
+sudo systemctl restart faux-show-backend cage-tty1
+```
