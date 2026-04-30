@@ -10,7 +10,7 @@ A web application to serve as a simple home smart display device.
 If top bar is hidden, need to access dash with `?disable_km` at the end of the URL to enable editing.
 http://10.10.10.10:8123/dashboard-kiosk/0?disable_km
 
-### Restart after backend update
+### Restart device without reboot
 ```
 sudo systemctl restart faux-show-backend cage-tty1
 ```

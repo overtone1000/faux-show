@@ -45,14 +45,14 @@
           version = "0.3.0"; #Package version
         };
 
-        main_deps_expression =
+        deps_expression =
         {
           lib,
           stdenv
         }:
         craneLib.buildDepsOnly commonArgs;
 
-        main_deps = pkgs.callPackage main_deps_expression { };
+        deps = pkgs.callPackage deps_expression { };
 
         main_expression =
         {
@@ -60,10 +60,10 @@
           stdenv
         }:
         craneLib.buildPackage (commonArgs // {
-          cargoArtifacts=main_deps;
+          cargoArtifacts=deps;
         });
 
-        main = pkgs.callPackage main_deps_expression { };
+        main = pkgs.callPackage main_expression { };
       in
       {
         checks = {
