@@ -1,4 +1,6 @@
 <script lang="ts">
+	import IconSvg from "./icon_svg.svelte";
+
     type Props = {
         path:string,
         label:string,
@@ -19,9 +21,8 @@
     onclick={action}
     disabled={disabled}
 >
-    <svg viewBox="0 0 24 24">
-        <path class="iconsvg" d={path}/>
-    </svg>
+    <IconSvg path={path}/>
+    
 </button>
 
 <style>

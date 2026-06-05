@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { mdiClock, mdiDebugStepInto, mdiImageMultiple } from '@mdi/js';
+    import { mdiCheck, mdiCircleOffOutline, mdiCircleOutline, mdiClock, mdiCross, mdiDebugStepInto, mdiImageMultiple } from '@mdi/js';
     import { mdiRefresh } from '@mdi/js';
     import { mdiRobot } from '@mdi/js';
     import IconTab, { type TabProps } from './icon_tab.svelte';
@@ -9,6 +9,7 @@
 	import type { AutoTabEntry, Command, TabConfig } from '$lib/commands';
 	import Slideshow from './slideshow.svelte';
 	import type { LegacyComponentType } from 'svelte/legacy';
+	import IconSvg from './icon_svg.svelte';
 
     //Hook console;
     enum ConsoleType {
@@ -257,29 +258,30 @@
         }
     }
 
-    //let socket:WebSocket|undefined=$state(undefined);
+    let socket:WebSocket|undefined=undefined;
+    let socket_state:boolean=$state(false);
     function open_socket(){
         const socket_url = "ws:/"+location.host;
         console.debug("Opening websocket");
-        const socket = new WebSocket(socket_url);
-
-        //const test = () => {
-        //    console.debug("Test...");
-        //    socket.send(new Date().toString());
-        //    setTimeout(test,1000);
-        //}
+        socket = new WebSocket(socket_url);
 
         // Connection opened
-        socket.addEventListener("open", (event) => {
+        socket.onopen=(event) => {
             console.debug("Connection opened.");
-            //test();
-        });
+            socket_state=true;
+        };
 
         // Listen for messages
-        socket.addEventListener("message", (event) => {
+        socket.onmessage = (event) => {
             console.log("Message from server ", event.data);
             handle_server_command(JSON.parse(event.data));
-        });
+        };
+
+        // Handle disconnect
+        socket.onclose = (event)=>{
+            setTimeout(open_socket,1000);
+            socket_state=false;
+        };
     };
 
     function build_tabs(tabs_config:TabsConfig[]) {
@@ -347,6 +349,15 @@
         <div class="spacer"></div>
         <Time/>
         <div class="spacer"></div>
+        {#if socket_state}
+            <div class="infotab">
+            <IconSvg path={mdiCircleOutline} stroke="green"/>
+            </div>
+        {:else}
+            <div class="infotab">
+            <IconSvg path={mdiCircleOffOutline} stroke="red"/>
+            </div>
+        {/if}
         <IconTab props={debug}/>
         <IconTab props={refresh}/>
     </div>
@@ -461,5 +472,17 @@
     }
     * {
         color-scheme: dark;
+    }
+    .infotab{
+        border-radius: 5%;
+        /*width:48px;*/
+        height:100%;
+        aspect-ratio: 1;
+        align-self: center;
+        margin:2px;
+        padding:0px;
+        margin: 0px;
+        border-width: 2px;
+        margin-right: var(--right_margin, "0px");
     }
 </style>

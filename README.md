@@ -19,3 +19,6 @@ sudo systemctl restart faux-show-backend cage-tty1
 ## Update tabs
 ssh into device and 
 `sudo nano /var/www/internal/faux_show_config/tabs.json`
+
+## To Do
+- [ ] Consider watchdog on existing internal websocket to reset cage-tty1 service if frontend stops responding.
