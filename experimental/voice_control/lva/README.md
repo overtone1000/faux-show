@@ -6,7 +6,7 @@ This contains third party software that is most easily deployed with containers.
 
 Start testing from repo root with
 ```
-bash ./containers/testing_start.sh
+bash ./experimental/voice_control/containers/testing_start.sh
 ```
 
 This connected but primarily only controls the assistant configured in home assistant. It does not seem to be useful for triggering actions on the local device.

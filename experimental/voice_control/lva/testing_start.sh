@@ -2,7 +2,7 @@
 
 set -e
 
-source ./containers/commons.sh
+source ./experimental/voice_control/containers/commons.sh
 
 echo Creating systemd directory for root.
 mkdir -p $LINK_DIR
