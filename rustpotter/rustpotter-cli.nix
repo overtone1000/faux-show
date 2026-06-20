@@ -34,13 +34,9 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   nativeBuildInputs = [ 
     pkgs.pkg-config
-    #pkgs.alsa-utils #Confirmed, not required 2
-    #pkgs.alsa-lib #Confirmed, not required 3
   ];
 
   buildInputs = [ 
-    #pkgs.pkg-config
-    #pkgs.alsa-utils #Confirmed, not required 1
     pkgs.alsa-lib
   ];
 
