@@ -11,11 +11,6 @@ Image=ghcr.io/ohf-voice/linux-voice-assistant:latest
 #Needs port 6053 for ESPHOME protocol
 PublishPort=6053:6053
 
-#AddDevice=/dev/zigbee:/dev/zigbee:rw
-#Volume=/mnt/primary/stringent_backup/home_assistant_config:/config
-#Environment=SOMETHING=ITSVALUE
-#EnvironmentFile?? Might work better for this project since it seems to be the primary means of configuration
-
 Environment=XDG_RUNTIME_DIR="/run/user/1000"
 Environment=CLIENT_NAME="lva_test"
 
