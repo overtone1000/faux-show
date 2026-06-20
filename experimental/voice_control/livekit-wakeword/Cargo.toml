@@ -1,0 +1,9 @@
+[package]
+name = "livekkit-wakeword-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+cpal = "^0" #Get microphone input
+livekit-wakeword = "^0"

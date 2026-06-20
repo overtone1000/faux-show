@@ -18,6 +18,10 @@ stdenv.mkDerivation {
 
         #Deploy
         rsync
+
+        #livekit testing seems to needs theese, not sure whether it's livekit or cpal
+        pkg-config
+        alsa-lib
     ];
 
     # Certain Rust tools won't work without this
