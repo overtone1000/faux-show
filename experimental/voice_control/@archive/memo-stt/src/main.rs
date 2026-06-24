@@ -13,9 +13,6 @@ const AUDIO_BUFFER_MULTIPLE:usize=2; //risk of stack overflow here, keep this lo
 const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 const CHUNK_BUFFER_MULTIPLE:usize=5;
 
-const THRESHOLD:f32=0.5;
-const HEY_LIVEKIT:&str="hey_livekit";
-
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 
 #[tokio::main]
@@ -101,27 +98,7 @@ async fn main() {
     let model_processor_future = tokio::spawn(
         async move {
             loop{
-                //println!("Chunk receiver contains {} chunks.",chunk_receiver.len());
-                match chunk_receiver.recv().await
-                {
-                    Some(chunk) => {
-                        //println!("Received value change.");
-                        match model.predict(&*chunk)
-                        {
-                            Ok(res) => {
-                                for (wakeword, score) in res
-                                {
-                                    if score>THRESHOLD
-                                    {
-                                        println!("Detected {} at {:?} (score {})",wakeword, std::time::Instant::now(), score)
-                                    }
-                                }
-                            },
-                            Err(_) => eprintln!("Model error"),
-                        };
-                    },
-                    None => (),
-                }
+                
             }
         }
     );

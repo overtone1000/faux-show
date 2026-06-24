@@ -1,0 +1,32 @@
+[Unit]
+Description="Whisper Live"
+#After=example_2a.container
+#Wants=mqtt.container zwave-js-ui.container
+#Requires=example_2a.container
+
+[Container]
+ContainerName=whisper-live
+Image=docker.io/hwdsl2/whisper-live-server
+
+PublishPort=9090:9090 #Websocket port for real-time streaming clients
+PublishPort=8000:8000 #HTTP port for REST API
+
+Environment=WHISPERLIVE_API_KEY="" #Explicitly set empty to disable key
+Environment=WHISPERLIVE_THREADS=4 #Set to number of physical cores for best latency
+
+#AddCapability=SYS_NICE
+#GroupAdd=audio
+
+Volume=whisper-live-data:/var/lib/whisper-live
+
+[Service]
+Restart=always
+
+#Default for systemd is 90 seconds. This allows the container more time to start.
+TimeoutStartSec=180
+#Wait 10 seconds before attempting a restart
+RestartSec=10
+
+[Install]
+# Start by default on boot
+WantedBy=default.target
