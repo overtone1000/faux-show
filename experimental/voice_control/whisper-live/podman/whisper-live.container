@@ -8,11 +8,16 @@ Description="Whisper Live"
 ContainerName=whisper-live
 Image=docker.io/hwdsl2/whisper-live-server
 
-PublishPort=9090:9090 #Websocket port for real-time streaming clients
-PublishPort=8000:8000 #HTTP port for REST API
+#Websocket port for real-time streaming clients
+PublishPort=9090:9090
+#HTTP port for REST API 
+PublishPort=8000:8000
 
-Environment=WHISPERLIVE_API_KEY="" #Explicitly set empty to disable key
-Environment=WHISPERLIVE_THREADS=4 #Set to number of physical cores for best latency
+#Explicitly set empty to disable key
+Environment=WHISPERLIVE_API_KEY=""
+#Set to number of physical cores for best latency
+Environment=WHISPERLIVE_THREADS=4
+Environment=WHISPERLIVE_LOG_LEVEL=DEBUG
 
 #AddCapability=SYS_NICE
 #GroupAdd=audio
