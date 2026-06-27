@@ -17,7 +17,7 @@ PublishPort=8000:8000
 Environment=WHISPERLIVE_API_KEY=""
 #Set to number of physical cores for best latency
 Environment=WHISPERLIVE_THREADS=4
-Environment=WHISPERLIVE_LOG_LEVEL=DEBUG
+#Environment=WHISPERLIVE_LOG_LEVEL=DEBUG
 
 #AddCapability=SYS_NICE
 #GroupAdd=audio

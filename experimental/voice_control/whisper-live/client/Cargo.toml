@@ -4,6 +4,9 @@ version = "0.3.0"
 edition = "2021"
 
 [dependencies]
+cpal = "^0" #Get microphone input
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = "^0"
 futures-util = "^0"
+serde = {version="^1", features = ["derive"]}
+serde_json = {version="^1"}

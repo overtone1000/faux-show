@@ -12,8 +12,8 @@ futures-util = "^0"
 hyper-util="^0"
 rumqttc="^0"
 
-serde = "1"
-serde_json = "1"
+serde = "^1"
+serde_json = "^1"
 
 #This imports the modules directly and is better for rapid development of the library
 #hyper-services = { path = "../../../trm-rust-libs/hyper-services" } #Can't do this, because then can't build with nix.
