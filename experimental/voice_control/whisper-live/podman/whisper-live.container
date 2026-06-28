@@ -17,12 +17,16 @@ PublishPort=8000:8000
 Environment=WHISPERLIVE_API_KEY=""
 #Set to number of physical cores for best latency
 Environment=WHISPERLIVE_THREADS=4
-#Environment=WHISPERLIVE_LOG_LEVEL=DEBUG
+
+#DEBUG, INFO, WARNING, ERROR, CRITICAL
+Environment=WHISPERLIVE_LOG_LEVEL=WARNING
 
 #AddCapability=SYS_NICE
 #GroupAdd=audio
 
+#This volume contains downloaded models. Once downloaded, can run in local only mode.
 Volume=whisper-live-data:/var/lib/whisper-live
+Environment=WHISPERLIVE_LOCAL_ONLY=true
 
 [Service]
 Restart=always

@@ -1,7 +1,7 @@
 use circular_buffer::CircularBuffer;
 use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
 use livekit_wakeword::wakeword::WakeWordModel;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::mpsc;
 
 const SAMPLE_RATE:usize=16000;
 const CHUNK_TIME_MILLISECONDS:usize=2000;

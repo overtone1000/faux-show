@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
-use serde::Serialize;
+use serde::{Deserialize, Serialize, de::value::Error};
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::{Bytes, Message}};
 use futures_util::{SinkExt, StreamExt};
@@ -15,12 +15,76 @@ const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 #[derive(Serialize,Debug)]
 struct LivekitConfig
 {
-    uid:String,
+    uid:String, //arbitrary
     language:String, //"en"
     model:String,
-    use_vad:bool,
+    use_vad:bool, //discard audio that doesn't seem to contain voice info
     task:String, //transcribe or translate
-    audio_format:String //float32, int16, or uint8
+    audio_format:String, //float32, int16, or uint8
+    word_timestamps:bool, //shows individual word probabilities while a segment is incomplete
+    hotwords:String //comma separated list of words that the model should expect
+}
+
+#[derive(Debug)]
+struct FloatString
+{
+    value:f32
+}
+impl <'de> Deserialize<'de> for FloatString
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> {
+            match String::deserialize(deserializer)
+            {
+                Ok(str) => {
+                    match str.parse::<f32>()
+                    {
+                        Ok(f32)=>Ok(FloatString{value:f32}),
+                        Err(e)=>{
+                            eprintln!("{:?}",e);
+                            Ok(FloatString{value:0.0})
+                        }
+                    }
+                },
+                Err(e) => Err(e),
+            }
+    }
+}
+impl Serialize for FloatString
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        self.value.to_string().serialize(serializer)
+    }
+}
+
+#[derive(Serialize,Deserialize,Debug)]
+struct LivekitTranscriptionWord
+{
+    word:String,
+    start:FloatString,
+    end:FloatString,
+    probability:f32
+}
+
+#[derive(Serialize,Deserialize,Debug)]
+struct LivekitTranscriptionSegment
+{
+    start:FloatString,
+    end:FloatString,
+    text:String,
+    completed:bool,
+    words:Option<Vec<LivekitTranscriptionWord>>
+}
+
+#[derive(Serialize,Deserialize,Debug)]
+struct LivekitTranscriptionMessage
+{
+    uid:String,
+    message:Option<String>, //will contain SERVER_READY if ready for streaming
+    segments:Option<Vec<LivekitTranscriptionSegment>>
 }
 
 #[tokio::main]
@@ -41,7 +105,9 @@ async fn main() {
         use_vad: true, 
         task: "transcribe".to_string(),
         //audio_format: "int16".to_string()
-        audio_format: "float32".to_string()
+        audio_format: "float32".to_string(),
+        word_timestamps: true,
+        hotwords: "".to_string() //"supercalafragalisticexpialadocious,lymphangioleiomyomatosis".to_string()
     };
     
     println!("{:?}",test_send);
@@ -147,10 +213,19 @@ async fn main() {
                         match next
                         {
                             Ok(next)=>{ 
-                                println!("Websocket received: {:?}",next);
                                 match next
                                 {
-                                    Message::Text(_utf8_bytes) => (),
+                                    Message::Text(utf8_bytes) => {
+                                        match serde_json::from_slice::<LivekitTranscriptionMessage>(utf8_bytes.as_bytes())
+                                        {
+                                            Ok(response)=>{
+                                                println!("{:?}",response);
+                                            },
+                                            Err(e)=>{
+                                                eprintln!("{:?}",e);
+                                            }
+                                        }
+                                    },
                                     Message::Binary(_bytes) => (),
                                     Message::Ping(_bytes) => (),
                                     Message::Pong(_bytes) => (),
@@ -180,7 +255,6 @@ async fn main() {
         Ok(_) => println!("Ended gracefully."),
         Err(e) => eprintln!("Couldn't join. {:?}",e),
     }
-
     
     //std::thread::sleep(Duration::from_secs(10));
 }

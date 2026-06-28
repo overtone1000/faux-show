@@ -1,0 +1,5 @@
+FROM ubuntu:latest
+RUN apt-get -y update && apt-get -y install espeak-ng libsndfile1 ffmpeg sox portaudio19-dev
+RUN apt-get -y install pip
+RUN pip install --break-system-packages livekit-wakeword[train,eval,export]
+COPY prod.yaml configs/prod.yaml
