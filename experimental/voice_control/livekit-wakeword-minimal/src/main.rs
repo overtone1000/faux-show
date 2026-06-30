@@ -14,7 +14,8 @@ const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 const CHUNK_BUFFER_MULTIPLE:usize=5;
 
 const THRESHOLD:f32=0.5;
-const HEY_LIVEKIT:&str="hey_livekit";
+//const WAKEWORD:&str="hey_livekit";
+const WAKEWORD:&str="faux_show";
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 
@@ -54,7 +55,7 @@ async fn main() {
     };
 
     let mut model = WakeWordModel::new(
-        &["/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword/".to_string() + HEY_LIVEKIT + ".onnx"],
+        &["/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword-minimal/".to_string() + WAKEWORD + ".onnx"],
         SAMPLE_RATE.try_into().expect("Should convert."
     )).expect("model should start");
 
@@ -113,7 +114,10 @@ async fn main() {
                                 {
                                     if score>THRESHOLD
                                     {
-                                        println!("Detected {} at {:?} (score {})",wakeword, std::time::Instant::now(), score)
+                                        println!("Detected {} at {:?} (score {})",wakeword, std::time::Instant::now(), score);
+                                    }
+                                    else {
+                                        println!("No detection. (score {})",score);
                                     }
                                 }
                             },
