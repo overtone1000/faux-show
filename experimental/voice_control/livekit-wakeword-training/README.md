@@ -41,3 +41,4 @@ Train with:
 ```
 livekit-wakeword run configs/prod.yaml
 ```
+Depending on what changed, it may be much faster to run training step-by-step
