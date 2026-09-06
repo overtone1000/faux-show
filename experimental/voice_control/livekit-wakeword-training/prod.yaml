@@ -5,7 +5,7 @@
 model_name: faux_show
 
 # Wake word phrases to detect (include spelling variations)
-target_phrases: ["faux show","foe show"]
+target_phrases: ["foe show", "fuh show"]
 
 # ============================================================================
 # Data Generation
@@ -32,8 +32,8 @@ custom_negative_phrases:
   - "show"
   # Phonetically similar prefixes
   - "for shoe"
-  - "far shoe"
-  - "oh toe"
+  - "far tow"
+  - "oh go"
   - "low shower"
 
 # ============================================================================

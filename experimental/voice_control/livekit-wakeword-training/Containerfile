@@ -2,4 +2,10 @@ FROM ubuntu:latest
 RUN apt-get -y update && apt-get -y install espeak-ng libsndfile1 ffmpeg sox portaudio19-dev
 RUN apt-get -y install pip
 RUN pip install --break-system-packages livekit-wakeword[train,eval,export]
+
+#To try to assess GPU devices and drivers
+#Does not work with containers! 
+#RUN apt-get -y update && apt-get -y install ubuntu-drivers-common
+#RUN apt-get -y update && apt-get -y install nvidia-smi
+
 COPY prod.yaml configs/prod.yaml
