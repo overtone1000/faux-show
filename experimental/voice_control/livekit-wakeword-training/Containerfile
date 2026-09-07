@@ -1,11 +1,25 @@
 FROM ubuntu:latest
 RUN apt-get -y update && apt-get -y install espeak-ng libsndfile1 ffmpeg sox portaudio19-dev
 RUN apt-get -y install pip
+
+#Trying to install from source below to get the right CUDA version
 RUN pip install --break-system-packages livekit-wakeword[train,eval,export]
 
 #To try to assess GPU devices and drivers
 #Does not work with containers! 
 #RUN apt-get -y update && apt-get -y install ubuntu-drivers-common
 #RUN apt-get -y update && apt-get -y install nvidia-smi
+
+#Trying to get a version that supports CUDA 12.6 and CC level 5.0 for the Quadro K2200 on the family desktop
+#https://pytorch.org/get-started/previous-versions/
+#This takes a long time!
+#RUN pip install --break-system-packages --no-cache-dir torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu126
+#RUN pip install --break-system-packages --no-cache-dir  torch==2.13.0 torchvision==0.28.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu130
+RUN pip install --break-system-packages --no-cache-dir  torch==2.13.0 torchvision==0.28.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu126
+
+#RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+#RUN git clone https://github.com/livekit/livekit-wakeword
+#WORKDIR livekit-wakeword
+#RUN uv sync --all-extras
 
 COPY prod.yaml configs/prod.yaml

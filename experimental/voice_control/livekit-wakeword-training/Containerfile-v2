@@ -1,0 +1,29 @@
+FROM ubuntu:latest
+RUN apt-get -y update && apt-get -y install espeak-ng libsndfile1 ffmpeg sox portaudio19-dev
+#RUN apt-get -y install pip
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvbin/uv
+
+RUN uv venv
+
+#This command also takes a while!
+#RUN uv tool install livekit-wakeword[train,eval,export]
+#If the above fails, maybe try the one below
+#Failed, can't seem to see different torch version
+RUN uv pip install livekit-wakeword[train,eval,export]
+
+#Switch to CUDA 12.6 (defaults to 13 but doesn't work with current GPU)
+#This command takes a long while!
+RUN uv pip install torch==2.14.0 torchaudio==2.11.0 --reinstall --index-url https://download.pytorch.org/whl/cu126
+#could try this...
+#RUN uv pip install torch torchaudio --torch-backend=cu126 --reinstall
+
+#Trying to switch to CUDA 12.6
+RUN uv pip install onnxruntime-gpu --reinstall --extra-index-url https://visualstudio.com
+
+COPY prod.yaml configs/prod.yaml
