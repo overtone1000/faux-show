@@ -14,8 +14,8 @@ const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 const CHUNK_BUFFER_MULTIPLE:usize=5;
 
 const THRESHOLD:f32=0.5;
-//const WAKEWORD:&str="hey_livekit";
-const WAKEWORD:&str="faux_show";
+//const WAKEWORD_ONNX:&str="hey_livekit";
+const WAKEWORD_ONNX:&str="faux_show_v2";
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 
@@ -55,7 +55,7 @@ async fn main() {
     };
 
     let mut model = WakeWordModel::new(
-        &["/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword-minimal/".to_string() + WAKEWORD + ".onnx"],
+        &["/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword-minimal/".to_string() + WAKEWORD_ONNX + ".onnx"],
         SAMPLE_RATE.try_into().expect("Should convert."
     )).expect("model should start");
 

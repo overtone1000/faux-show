@@ -33,8 +33,3 @@ Depending on what changed, it may be much faster to run training step-by-step
     livekit-wakeword export configs/prod.yaml    # Export to ONNX (default)
     livekit-wakeword eval configs/prod.yaml      # Evaluate model (DET curve, AUT, FPPH)
 ```
-
-Last run looks like it finished augmenting.
-```
-livekit-wakeword train configs/prod.yaml && livekit-wakeword export configs/prod.yaml && livekit-wakeword eval configs/prod.yaml
-```

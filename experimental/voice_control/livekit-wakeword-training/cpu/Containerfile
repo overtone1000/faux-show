@@ -22,4 +22,4 @@ RUN pip install --break-system-packages --no-cache-dir  torch==2.13.0 torchvisio
 #WORKDIR livekit-wakeword
 #RUN uv sync --all-extras
 
-COPY prod.yaml configs/prod.yaml
+COPY ../prod.yaml configs/prod.yaml
