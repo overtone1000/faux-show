@@ -1,13 +1,8 @@
-use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
-use tokio_tungstenite::{connect_async, tungstenite::{Bytes, Message}};
-use futures_util::{SinkExt, StreamExt};
+use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-
-const SAMPLE_RATE:usize=16000;
-const CHANNELS:u16=1;
-const BITS_PER_SAMPLE:usize=16;
 const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 
 #[derive(Serialize,Debug)]
@@ -116,75 +111,7 @@ async fn main() {
     
     write.send(test_message).await.expect("Should complete.");
 
-    //Audio stream initialization
-    let bits_per_sample_u32:u32 = BITS_PER_SAMPLE.try_into().expect("Should convert.");
-    let sample_rate_u32:u32 = SAMPLE_RATE.try_into().expect("Should convert.");
 
-    //let (chunk_transmitter, mut chunk_receiver) = mpsc::channel::<Box<[i16;CHUNK_SIZE]>>(CHUNK_BUFFER_MULTIPLE);
-
-    let host = cpal::default_host();
-    let device = host.default_input_device().expect("Should exist.");
-
-    for supported_config in device.supported_input_configs().expect("Should get configs")
-    {
-        if supported_config.sample_format().is_int() && 
-            supported_config.sample_format().bits_per_sample()==bits_per_sample_u32 &&
-            supported_config.channels() == CHANNELS &&
-            supported_config.min_sample_rate() <= sample_rate_u32 &&
-            supported_config.max_sample_rate() >= sample_rate_u32
-        {
-            println!("Desired config found.");
-            println!("   {:?}",supported_config);
-            break;
-        }
-    }
-
-    let stream_config:StreamConfig=StreamConfig { channels: CHANNELS, sample_rate: sample_rate_u32, buffer_size: cpal::BufferSize::Default };
-
-    //let config = device.default_input_config().expect("Should have config.");
-    //println!("Default input config: {:?}", config);
-    //let stream_config = config.config();
-    
-    let err_fn = move |err| {
-        eprintln!("An error occurred on the audio stream: {}", err);
-    };
-
-    let data_fn = move |data: &[i16], _: &cpal::InputCallbackInfo| {
-        let mut raw_bytes:Vec<u8>=Vec::with_capacity(data.len()*2);
-        for datum in data
-        {
-            //raw_bytes.extend(&datum.to_le_bytes()); //Is probably little endian but not confirmed
-            //raw_bytes.extend(&datum.to_be_bytes());
-
-            
-            //This works!!
-            {
-                let asfloat=if *datum < 0 {
-                    *datum as f32 / 32768.0 //max for i16
-                } else {
-                    *datum as f32 / 32767.0 //min for i16
-                };
-                
-                raw_bytes.extend(&asfloat.to_le_bytes()); //Is probably little endian but not confirmed
-            }
-        }
-
-        //println!("Sending {} bytes.",raw_bytes.len());
-        //println!("     {:?}",raw_bytes);
-        //println!("     {:?}",data);
-        websocket_message_transmitter.blocking_send(Message::binary(
-                Bytes::from_iter(raw_bytes)
-        )).expect("Shoud send.");
-    };
-
-    let stream = device.build_input_stream(
-        stream_config,
-        data_fn,
-        err_fn,
-        None, // Timeout
-    ).expect("Failed to build input stream");
-
-    stream.play().expect("Failed to start stream");
 
     let websocket_message_sender = tokio::spawn(
         async move {

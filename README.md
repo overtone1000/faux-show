@@ -22,3 +22,10 @@ ssh into device and
 
 ## To Do
 - [ ] Consider watchdog on existing internal websocket to reset cage-tty1 service if frontend stops responding.
+- [ ] Voice control
+    - [x] Refactor common constants for wakeword and streaming
+    - [ ] Just get audio stream once and reuse data
+        - [ ] Need a unified data function for audio stream
+            This should probably take the form primarily of the circular buffer of the wakeword listener with access to the whisper stream. When wakeword detection occurs, send some amount of the circular buffer (good way to determine where the end of the wakeword is from livekit-wakeword?) to the whisper stream and then continue to do so for some amount of time (10s?) or until a command is definitely identified from the returning transcription.
+    - [ ] Convert sample functions to structs with initialization
+    - [ ] Test UI
