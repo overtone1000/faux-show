@@ -479,6 +479,8 @@ dependencies = [
 name = "faux-show-backend"
 version = "0.3.0"
 dependencies = [
+ "circular-buffer",
+ "cpal",
  "form_urlencoded",
  "futures-util",
  "has-mqtt",
@@ -486,10 +488,12 @@ dependencies = [
  "hyper-services",
  "hyper-tungstenite",
  "hyper-util",
+ "livekit-wakeword",
  "rumqttc",
  "serde",
  "serde_json",
  "tokio",
+ "tokio-tungstenite",
  "websocket",
 ]
 

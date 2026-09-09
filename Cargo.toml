@@ -2,6 +2,6 @@
 resolver = "3"
 members = [
     "software/backend",
-    "experimental/voice_control/whisper-live/minimal-client",
-    "experimental/voice_control/livekit-wakeword-minimal"
+    "voice_control_examples/whisper-live/minimal-client",
+    "voice_control_examples/livekit-wakeword-minimal-example"
 ]

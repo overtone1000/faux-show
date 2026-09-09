@@ -24,3 +24,19 @@ serde_json = "^1"
 hyper-services = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
 websocket = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
 has-mqtt = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
+
+#Whisper streaming and livekit wakeword
+cpal = "^0" #Get microphone input
+
+#Whisper streaming
+tokio-tungstenite = "^0"
+
+#Livekit wakeword
+livekit-wakeword = "^0"
+circular-buffer = "^1"
+
+#For livekit wakeword optimization
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
