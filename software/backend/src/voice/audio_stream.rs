@@ -18,15 +18,36 @@ const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 pub const CHUNK_BUFFER_MULTIPLE:usize=5;
 const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 
-pub async fn voice_command_listener(
+pub async fn run_voice_command_listener(
+    wakeword_onnx_file:&str,
+    url:&str
+)->Result<(), Box<dyn std::error::Error + Send + Sync>>
+{
+    loop {
+        let handle=voice_command_listener(
+            wakeword_onnx_file,
+            url
+        );
+        match tokio::join!(handle){
+            (Ok(()),)=>(),
+            (Err(e),)=>{
+                eprintln!("{:?}",e);
+            }
+        };
+        println!("Audio stream returned. Restarting in one second.");
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}
+
+async fn voice_command_listener(
     wakeword_onnx_file:&str,
     url:&str
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     //senders and receivers
-    let (wakeword_chunk_transmitter, mut wakeword_chunk_receiver) = mpsc::channel::<Box<[i16;CHUNK_SIZE]>>(CHUNK_BUFFER_MULTIPLE);
+    let (wakeword_chunk_transmitter, wakeword_chunk_receiver) = mpsc::channel::<Box<[i16;CHUNK_SIZE]>>(CHUNK_BUFFER_MULTIPLE);
     let (last_detected_wakeword_sender, mut last_detected_wakeword_receiver) = watch::channel::<Option<SystemTime>>(None);
-    let (whisper_websocket_message_transmitter, mut whisper_websocket_message_receiver) = mpsc::channel::<Message>(WEBSOCKET_MESSAGE_BUFFER_LENGTH);   
+    let (whisper_websocket_message_transmitter, whisper_websocket_message_receiver) = mpsc::channel::<Message>(WEBSOCKET_MESSAGE_BUFFER_LENGTH);   
 
     //Audio stream initialization
     let bits_per_sample_u32:u32 = BITS_PER_SAMPLE.try_into().expect("Should convert.");
@@ -140,6 +161,7 @@ pub async fn voice_command_listener(
 
                     if SystemTime::now()>comptime
                     {
+                        println!("Stopping stream to whisper.");
                         stream_to_whisper=false;
                         last_detection=None;
                     }
@@ -188,5 +210,6 @@ pub async fn voice_command_listener(
 
     tokio::join!(wakeword_handle,whisper_handle);
 
+    println!("Audio stream joined.");
     Ok(())
 }

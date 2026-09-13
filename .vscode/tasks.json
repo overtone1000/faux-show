@@ -54,7 +54,30 @@
                     "KIOSK_USER_ID":"2000",
                     "PHOTOPRISM_KEY":"${input:getSecret}",
                     "WHISPER_SERVER":"ws://127.0.0.1:9090",
-                    "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword-minimal/faux_show_v2.onnx",
+                    "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx",
+                }
+            }
+        },
+        {
+            "type": "shell",
+            "command": "cargo run --release",
+            "group": "build",
+            "label": "Run Backend in Release Mode",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "options": {
+                "cwd":"software/backend",
+                "env": {
+                    "DEVELOPMENT_MODE":"true",
+                    "EXTERNAL_USER":"faux_show_test_user",
+                    "EXTERNAL_PASSWORD":"faux_show_test_password",
+                    "DEVICE_NAME":"Test Faux Show",
+                    "DEVICE_ID":"test_faux_show",
+                    "KIOSK_USER_ID":"2000",
+                    "PHOTOPRISM_KEY":"${input:getSecret}",
+                    "WHISPER_SERVER":"ws://127.0.0.1:9090",
+                    "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx",
                 }
             }
         },

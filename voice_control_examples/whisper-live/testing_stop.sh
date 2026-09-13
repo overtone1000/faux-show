@@ -2,7 +2,7 @@
 
 set -e
 
-source ./experimental/voice_control/whisper-live/commons.sh
+source ./commons.sh
 
 systemctl --user stop $CONTAINER_NAME
 

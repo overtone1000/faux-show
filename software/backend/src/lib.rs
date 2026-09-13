@@ -23,7 +23,7 @@ use crate::mqtt::MQTTConfiguration;
 use crate::services::external::external_core::ExternalCore;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
-use crate::voice::audio_stream::voice_command_listener;
+use crate::voice::audio_stream::{run_voice_command_listener};
 
 #[derive(Debug)]
 pub struct InitializationParameters
@@ -117,9 +117,10 @@ pub async fn start_and_run(params:InitializationParameters) {
         let mqtt_client=mqtt::get_has_client(external_core, &params.mqtt_config, params.kiosk_uid).await;
         let mqtt_client_future = mqtt_client.run();
 
-        let voice_command_handle=voice_command_listener(
-            &params.whisper_server_url,
-            &params.wakeword_onnx_file
+        let voice_command_handle=run_voice_command_listener(
+            &params.wakeword_onnx_file,
+            &params.whisper_server_url
+            
         );
 
         println!("Services created.");

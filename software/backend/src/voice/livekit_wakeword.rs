@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use livekit_wakeword::{SAMPLE_RATE, wakeword::WakeWordModel};
 
@@ -6,7 +6,7 @@ use tokio::sync::{mpsc, watch};
 
 use crate::voice::audio_stream::CHUNK_SIZE;
 
-const THRESHOLD:f32=0.5;
+const THRESHOLD:f32=0.89;
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 
@@ -26,6 +26,8 @@ pub async fn run_wakeword_listener(
             &last_detected_wakeword_sender
         );
         tokio::join!(handle);
+        println!("Wakeword loop returned. Restarting in one second.");
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
@@ -35,44 +37,46 @@ async fn wakeword_listener_loop(
     last_detected_wakeword_sender:&watch::Sender<Option<SystemTime>>
 ) {
     
-    let mut model = WakeWordModel::new(
+    let mut model = match WakeWordModel::new(
         &[wakeword_onnx_file],
         SAMPLE_RATE.try_into().expect("Should convert.")
-    ).expect("model should start");
-
-    let model_processor_function = async move {
-        loop{
-            match chunk_receiver.recv().await
-            {
-                Some(chunk) => {
-                    //println!("Received value change.");
-                    match model.predict(&*chunk)
-                    {
-                        Ok(res) => {
-                            for (wakeword, score) in res
-                            {
-                                if score>THRESHOLD
-                                {
-                                    match last_detected_wakeword_sender.send(Some(SystemTime::now()))
-                                    {
-                                        Ok(_)=>(),
-                                        Err(e)=>{eprintln!("{:?}",e)}
-                                    }
-                                    println!("Detected {} at {:?} (score {})",wakeword, std::time::Instant::now(), score);
-                                }
-                            }
-                        },
-                        Err(_) => eprintln!("Model error"),
-                    };
-                },
-                None => (),
-            }
+    ){
+        Ok(model)=>model,
+        Err(e)=>{
+            eprintln!("{:?}",e);
+            return;
         }
     };
 
-    //let model_processor_future = tokio::spawn(model_processor_function);
-
-    tokio::select!{
-        _=model_processor_function=>{eprintln!("Model processor function exited.");}
+    loop{
+        match chunk_receiver.recv().await
+        {
+            Some(chunk) => {
+                //println!("Received value change.");
+                match model.predict(&*chunk)
+                {
+                    Ok(res) => {
+                        for (wakeword, score) in res
+                        {
+                            if score>THRESHOLD
+                            {
+                                match last_detected_wakeword_sender.send(Some(SystemTime::now()))
+                                {
+                                    Ok(_)=>(),
+                                    Err(e)=>{eprintln!("{:?}",e)}
+                                }
+                                println!("Detected {} at {:?} (score {})",wakeword, std::time::Instant::now(), score);
+                            }
+                            else
+                            {
+                                println!("No detection (score {})", score)
+                            }
+                        }
+                    },
+                    Err(_) => eprintln!("Model error"),
+                };
+            },
+            None => (),
+        }
     }
 }

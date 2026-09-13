@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
@@ -87,6 +89,8 @@ pub async fn run_whisper_client(
     loop {
         let handle=whisper_client_loop(url, &mut websocket_message_receiver);
         tokio::join!(handle);
+        println!("Whiiper returned. Restarting in one second.");
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
@@ -94,13 +98,20 @@ async fn whisper_client_loop(
     url:&str,
     websocket_message_receiver:&mut mpsc::Receiver<Message>
 ) {
-    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
+    let (ws_stream, _response) = match connect_async(url).await
+    {
+        Ok((ws_stream,_response))=>{(ws_stream,_response)},
+        Err(e)=>{
+            eprintln!("{:?}",e);
+            return;
+        }
+    };
     println!("WebSocket handshake has been successfully completed");
 
     let (mut write, mut read) = ws_stream.split();
 
-    let test_send= LivekitConfig{ 
-        uid: "test_client".to_string(), 
+    let livekit_config= LivekitConfig{ 
+        uid: "faux_show_client".to_string(), 
         language: "en".to_string(), 
         model: "base".to_string(), 
         use_vad: true, 
@@ -111,14 +122,36 @@ async fn whisper_client_loop(
         hotwords: "".to_string() //"supercalafragalisticexpialadocious,lymphangioleiomyomatosis".to_string()
     };
     
-    println!("{:?}",test_send);
+    println!("{:?}",livekit_config);
 
     //write.send(test_send.into()).await.expect("Should complete.");
 
-    let json:String=serde_json::to_string(&test_send).expect("Should deserialize.");
-    let test_message = Message::text(json);
+    let json:String=match serde_json::to_string(&livekit_config)
+    {
+        Ok(json)=>json,
+        Err(e)=>{
+            eprintln!("{:?}",e);
+            return;
+        }
+    };
     
-    write.send(test_message).await.expect("Should complete.");
+    let configuration_message = Message::text(json);
+    
+    
+    let mut send_message = async move |message:Message|{
+        match write.send(message).await
+        {
+            Ok(())=>(),
+            Err(e)=>{
+                eprintln!("{:?}",e);
+                return;
+            }
+        }
+    };
+
+    send_message(configuration_message).await;
+
+    //let (internal_message_transmitter, mut internal_message_receiver) = mpsc::channel::<Message>(2);   
 
     let websocket_message_sender = 
         async move {
@@ -126,11 +159,17 @@ async fn whisper_client_loop(
                 match websocket_message_receiver.recv().await
                 {
                     Some(message) => {
-                        //println!("Sending message. {:?}",message);
-                        write.send(message).await.expect("Should send.")
+                        send_message(message).await
                     },
                     None => (),
                 }
+                /*
+                let message= tokio::select! {
+                    Some(msg1)=websocket_message_receiver.recv()=>msg1,
+                    //Some(msg2)=internal_message_receiver.recv()=>msg2
+                };
+                send_message(message).await;
+                */
             }
         }
     ;
@@ -150,7 +189,35 @@ async fn whisper_client_loop(
                                         match serde_json::from_slice::<LivekitTranscriptionMessage>(utf8_bytes.as_bytes())
                                         {
                                             Ok(response)=>{
-                                                println!("{:?}",response);
+                                                match response.message
+                                                {
+                                                    Some(message)=>println!("{}",message),
+                                                    None=>{
+                                                        match response.segments
+                                                        {
+                                                            Some(segments)=>{
+                                                                for segment in segments
+                                                                {
+                                                                    let c=match segment.completed
+                                                                    {
+                                                                        true=>"Completed",
+                                                                        false=>"Incomplete"
+                                                                    };
+                                                                    println!("   {}:{}",c,segment.text);
+                                                                    /*
+                                                                    if segment.completed
+                                                                    {
+                                                                        internal_message_transmitter.send(
+                                                                            Message::Close(None)
+                                                                        ).await.expect("Should work...");
+                                                                    }
+                                                                    */
+                                                                }
+                                                            },
+                                                            None=>println!("No message or segments.")
+                                                        }
+                                                    }
+                                                };
                                             },
                                             Err(e)=>{
                                                 eprintln!("{:?}",e);
@@ -163,7 +230,7 @@ async fn whisper_client_loop(
                                     Message::Close(close_frame) => {
                                         match close_frame
                                         {
-                                            Some(_close_frame)=>(),
+                                            Some(_close_frame)=>println!("Close frame received."),
                                             None=>()
                                         }
                                     },

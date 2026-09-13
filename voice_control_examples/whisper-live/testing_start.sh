@@ -2,7 +2,7 @@
 
 set -e
 
-source ./experimental/voice_control/whisper-live/commons.sh
+source ./commons.sh
 
 echo Creating systemd directory for root.
 mkdir -p $LINK_DIR
