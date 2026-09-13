@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
-
 #[derive(Serialize,Debug)]
 struct LivekitConfig
 {
@@ -80,14 +78,25 @@ struct LivekitTranscriptionMessage
     segments:Option<Vec<LivekitTranscriptionSegment>>
 }
 
-async fn main() {
+//url for testing
+//let url = "ws://127.0.0.1:9090";
+pub async fn run_whisper_client(
+    url:&str,
+    mut websocket_message_receiver:mpsc::Receiver<Message>
+) {
+    loop {
+        let handle=whisper_client_loop(url, &mut websocket_message_receiver);
+        tokio::join!(handle);
+    }
+}
 
-    let url = "ws://127.0.0.1:9090";
-
+async fn whisper_client_loop(
+    url:&str,
+    websocket_message_receiver:&mut mpsc::Receiver<Message>
+) {
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
     println!("WebSocket handshake has been successfully completed");
 
-    let (websocket_message_transmitter, mut websocket_message_receiver) = mpsc::channel::<Message>(WEBSOCKET_MESSAGE_BUFFER_LENGTH);
     let (mut write, mut read) = ws_stream.split();
 
     let test_send= LivekitConfig{ 
@@ -111,9 +120,7 @@ async fn main() {
     
     write.send(test_message).await.expect("Should complete.");
 
-
-
-    let websocket_message_sender = tokio::spawn(
+    let websocket_message_sender = 
         async move {
             loop {
                 match websocket_message_receiver.recv().await
@@ -126,9 +133,9 @@ async fn main() {
                 }
             }
         }
-    );
+    ;
 
-    let websocket_message_handler = tokio::spawn (
+    let websocket_message_handler=
         async move {
             loop {
                 match read.next().await
@@ -172,13 +179,10 @@ async fn main() {
                 }
             }
         }
-    );
+    ;
 
-    match tokio::try_join!(websocket_message_sender,websocket_message_handler)
-    {
-        Ok(_) => println!("Ended gracefully."),
-        Err(e) => eprintln!("Couldn't join. {:?}",e),
+    tokio::select!{
+        _=websocket_message_sender=>{eprintln!("Whisper client message sender failed.")},
+        _=websocket_message_handler=>{eprintln!("Whisper client message handler failed.")}
     }
-    
-    //std::thread::sleep(Duration::from_secs(10));
 }

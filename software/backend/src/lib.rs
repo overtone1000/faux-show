@@ -23,6 +23,7 @@ use crate::mqtt::MQTTConfiguration;
 use crate::services::external::external_core::ExternalCore;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
+use crate::voice::audio_stream::voice_command_listener;
 
 #[derive(Debug)]
 pub struct InitializationParameters
@@ -34,7 +35,9 @@ pub struct InitializationParameters
     auth:Auth,
     kiosk_uid:u64,
     mqtt_config:MQTTConfiguration,
-    photoprism_key:String
+    photoprism_key:String,
+    whisper_server_url:String,
+    wakeword_onnx_file:String
 }
 
 impl InitializationParameters
@@ -47,7 +50,9 @@ impl InitializationParameters
         auth:Auth,
         kiosk_uid:u64,
         mqtt_config:MQTTConfiguration,
-        photoprism_key:String
+        photoprism_key:String,
+        whisper_server_url:String,
+        wakeword_onnx_file:String
     )->InitializationParameters
     {
         InitializationParameters { 
@@ -58,7 +63,9 @@ impl InitializationParameters
             auth,
             kiosk_uid,
             mqtt_config,
-            photoprism_key
+            photoprism_key,
+            whisper_server_url,
+            wakeword_onnx_file
         }
     }
 }
@@ -110,9 +117,14 @@ pub async fn start_and_run(params:InitializationParameters) {
         let mqtt_client=mqtt::get_has_client(external_core, &params.mqtt_config, params.kiosk_uid).await;
         let mqtt_client_future = mqtt_client.run();
 
+        let voice_command_handle=voice_command_listener(
+            &params.whisper_server_url,
+            &params.wakeword_onnx_file
+        );
+
         println!("Services created.");
 
-        match tokio::try_join!(internal_service_future, external_service_future, mqtt_client_future)
+        match tokio::try_join!(internal_service_future, external_service_future, mqtt_client_future, voice_command_handle)
         {
             Ok(_) => println!("Services closed gracefully."),
             Err(e) => {

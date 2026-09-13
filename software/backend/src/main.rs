@@ -14,6 +14,9 @@ const DEVICE_MQTT_ID_ENV_KEY:&str="DEVICE_ID";
 
 const PHOTOPRISM_KEY_ENV_KEY:&str="PHOTOPRISM_KEY";
 
+const WHISPER_SERVER_URL_KEY:&str="WHISPER_SERVER";
+const WAKEWORD_ONNX_FILE_KEY:&str="WAKEWORD_ONNX_FILE";
+
 const PROD_INTERNAL_SERVICE_DIR:&str="/var/www/internal";
 const PROD_CONFIG_DIR:&str="/var/www/config";
 const PROD_INTERNAL_PORT:u16=30125;
@@ -116,6 +119,28 @@ async fn main() {
         password
     };
 
+    let whisper_server_url:String = match std::env::var(WHISPER_SERVER_URL_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide whisper server url as an environment variable.");
+            return;
+        }
+    };
+
+    let wakeword_onnx_file:String = match std::env::var(WAKEWORD_ONNX_FILE_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide wakeword onnx file path as an environment variable.");
+            return;
+        }
+    };
+    
 
     let mqtt_config = faux_show_backend::mqtt::MQTTConfiguration
     {
@@ -142,7 +167,9 @@ async fn main() {
                 auth,
                 kiosk_uid,
                 mqtt_config,
-                photoprism_key
+                photoprism_key,
+                whisper_server_url,
+                wakeword_onnx_file
             )
         },
         false=>{
@@ -155,7 +182,9 @@ async fn main() {
                 auth,
                 kiosk_uid,
                 mqtt_config,
-                photoprism_key
+                photoprism_key,
+                whisper_server_url,
+                wakeword_onnx_file
             )
         }
     };

@@ -52,7 +52,9 @@
                     "DEVICE_NAME":"Test Faux Show",
                     "DEVICE_ID":"test_faux_show",
                     "KIOSK_USER_ID":"2000",
-                    "PHOTOPRISM_KEY":"${input:getSecret}"
+                    "PHOTOPRISM_KEY":"${input:getSecret}",
+                    "WHISPER_SERVER":"ws://127.0.0.1:9090",
+                    "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword-minimal/faux_show_v2.onnx",
                 }
             }
         },
