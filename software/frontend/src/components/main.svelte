@@ -1,12 +1,12 @@
 <script lang="ts">
-    import { mdiCheck, mdiCircleOffOutline, mdiCircleOutline, mdiClock, mdiCross, mdiDebugStepInto, mdiImageMultiple } from '@mdi/js';
+    import { mdiCheck, mdiCircleOffOutline, mdiCircleOutline, mdiClock, mdiCross, mdiDebugStepInto, mdiImageMultiple, mdiEarHearing } from '@mdi/js';
     import { mdiRefresh } from '@mdi/js';
     import { mdiRobot } from '@mdi/js';
     import IconTab, { type TabProps } from './icon_tab.svelte';
 	import { onMount } from 'svelte';
 	import Time from './time.svelte';
 	import TimerPage, { type Timer, type TimerState as TimerState } from './timer_page.svelte';
-	import type { AutoTabEntry, Command, TabConfig } from '$lib/commands';
+	import { VoiceControlState, type AutoTabEntry, type Command, type TabConfig } from '$lib/commands';
 	import Slideshow from './slideshow.svelte';
 	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
@@ -261,6 +261,8 @@
         }
     }
 
+    let voice_control_state:VoiceControlState=VoiceControlState.NotEnabled;
+
     let socket:WebSocket|undefined=undefined;
     let socket_state:boolean=$state(false);
     function open_socket(){
@@ -351,13 +353,26 @@
         <div class="spacer"></div>
         <Time/>
         <div class="spacer"></div>
+        {#if voice_control_state===VoiceControlState.NotEnabled}
+            <div class="infotab">
+                <IconSvg path={mdiEarHearing} stroke="gray"/>
+            </div>
+        {:else if voice_control_state===VoiceControlState.ListeningForWakeword}
+            <div class="infotab">
+                <IconSvg path={mdiEarHearing} stroke="yellow"/>
+            </div>
+        {:else if voice_control_state===VoiceControlState.StreamingToWhisper}
+            <div class="infotab">
+                <IconSvg path={mdiEarHearing} stroke="green"/>
+            </div>
+        {/if}
         {#if socket_state}
             <div class="infotab">
-            <IconSvg path={mdiCircleOutline} stroke="green"/>
+                <IconSvg path={mdiCircleOutline} stroke="green"/>
             </div>
         {:else}
             <div class="infotab">
-            <IconSvg path={mdiCircleOffOutline} stroke="red"/>
+                <IconSvg path={mdiCircleOffOutline} stroke="red"/>
             </div>
         {/if}
         <IconTab props={debug}/>

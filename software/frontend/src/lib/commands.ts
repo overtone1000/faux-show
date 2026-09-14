@@ -9,8 +9,16 @@ export type AutoTabEntry = {
     expiry:Date
 };
 
+export enum VoiceControlState
+{
+    NotEnabled,
+    ListeningForWakeword,
+    StreamingToWhisper
+}
+
 export type Command = {
     AutoTab?:string,
     PhotoprismKey?:string,
-    SetScreenState?:boolean
+    SetScreenState?:boolean,
+    SetVoiceControlState?:VoiceControlState
 }
