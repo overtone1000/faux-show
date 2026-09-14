@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio::{net::TcpStream, sync::{mpsc, watch}};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 #[derive(Serialize,Debug)]
 struct LivekitConfig
@@ -80,22 +80,42 @@ struct LivekitTranscriptionMessage
     segments:Option<Vec<LivekitTranscriptionSegment>>
 }
 
+#[derive(PartialEq,Clone)]
+pub enum WhisperClientControl
+{
+    Start,
+    Stop
+}
+
 //url for testing
 //let url = "ws://127.0.0.1:9090";
 pub async fn run_whisper_client(
     url:&str,
+    mut whisper_client_control_receiver:watch::Receiver<WhisperClientControl>,
     mut websocket_message_receiver:mpsc::Receiver<Message>
 ) {
     loop {
-        let handle=whisper_client_loop(url, &mut websocket_message_receiver);
+        //Wait for Start command
+        match whisper_client_control_receiver.wait_for(|c|{*c==WhisperClientControl::Start}).await{
+            Ok(_)=>(),
+            Err(e)=>{
+                eprintln!("{:?}",e);
+            }
+        };
+
+        //Start loop
+        let handle=whisper_client_loop(
+            url,
+            &mut whisper_client_control_receiver,
+            &mut websocket_message_receiver
+        );
         tokio::join!(handle);
-        println!("Whiiper returned. Restarting in one second.");
-        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
 async fn whisper_client_loop(
     url:&str,
+    whisper_client_control_receiver:&mut watch::Receiver<WhisperClientControl>,
     websocket_message_receiver:&mut mpsc::Receiver<Message>
 ) {
     let (ws_stream, _response) = match connect_async(url).await
@@ -137,8 +157,10 @@ async fn whisper_client_loop(
     
     let configuration_message = Message::text(json);
     
-    
-    let mut send_message = async move |message:Message|{
+    async fn send_message(
+        write:&mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        message:Message)
+    {
         match write.send(message).await
         {
             Ok(())=>(),
@@ -147,15 +169,17 @@ async fn whisper_client_loop(
                 return;
             }
         }
-    };
+    }
 
-    send_message(configuration_message).await;
+    send_message(&mut write,configuration_message).await;
 
     //let (internal_message_transmitter, mut internal_message_receiver) = mpsc::channel::<Message>(2);   
 
     let websocket_message_sender = 
         async move {
-            loop {
+            let mut continue_loop=true;
+            while continue_loop {
+                /*
                 match websocket_message_receiver.recv().await
                 {
                     Some(message) => {
@@ -163,20 +187,35 @@ async fn whisper_client_loop(
                     },
                     None => (),
                 }
-                /*
-                let message= tokio::select! {
-                    Some(msg1)=websocket_message_receiver.recv()=>msg1,
-                    //Some(msg2)=internal_message_receiver.recv()=>msg2
-                };
-                send_message(message).await;
                 */
+                
+                tokio::select! {
+                    Some(message)=websocket_message_receiver.recv()=>{
+                        send_message(&mut write, message).await
+                    },
+                    result=whisper_client_control_receiver.wait_for(|c|{*c==WhisperClientControl::Stop})=>{
+                        //If whisper_client_control_receiver receives a stop signal, exit the loop
+                        match result
+                        {
+                            Ok(_) => (),
+                            Err(e) => eprintln!("{:?}",e),
+                        }
+                        continue_loop=false;
+                        match write.close().await
+                        {
+                            Ok(_)=>{println!("Whisper stream closed.");},
+                            Err(e)=>{eprintln!("{:?}",e);}
+                        };
+                    }
+                };
             }
         }
     ;
 
     let websocket_message_handler=
         async move {
-            loop {
+            let mut continue_loop=true;
+            while continue_loop {
                 match read.next().await
                 {
                     Some(next) => {
@@ -191,7 +230,14 @@ async fn whisper_client_loop(
                                             Ok(response)=>{
                                                 match response.message
                                                 {
-                                                    Some(message)=>println!("{}",message),
+                                                    Some(message)=>{
+                                                        println!("Got message: {}",message);
+                                                        match message.as_str()
+                                                        {
+                                                            "SERVER_READY"=>{println!("This might be a good time to queue in UI that wakeword was recognized and whisper is listening.");}
+                                                            _=>()
+                                                        };
+                                                    },
                                                     None=>{
                                                         match response.segments
                                                         {
@@ -230,9 +276,13 @@ async fn whisper_client_loop(
                                     Message::Close(close_frame) => {
                                         match close_frame
                                         {
-                                            Some(_close_frame)=>println!("Close frame received."),
-                                            None=>()
-                                        }
+                                            Some(close_frame)=>{
+                                                println!("Close frame received. {:?}", close_frame);
+                                            }
+                                            None=>println!("Close recieved. No final frame.")
+                                        };
+                                        //Regardless of close frame contents, stop the loop
+                                        continue_loop=false;
                                     },
                                     Message::Frame(_frame) => (),
                                 }
@@ -248,8 +298,30 @@ async fn whisper_client_loop(
         }
     ;
 
+    /*
+    let command_handler= async move {
+        loop{
+            //Wait for Stop command
+            whisper_client_control_receiver.wait_for(|c|{*c==WhisperClientControl::Stop}).await;
+
+            //And break loop
+            break;
+        }
+    };
+    */
+
+    /*
     tokio::select!{
         _=websocket_message_sender=>{eprintln!("Whisper client message sender failed.")},
         _=websocket_message_handler=>{eprintln!("Whisper client message handler failed.")}
     }
+    */
+
+    //Graceful shutdown requires driving messages to close frames, so use a join instead of a select.
+    tokio::join!{
+        websocket_message_sender,
+        websocket_message_handler
+    };
+
+    println!("Whisper exit.");
 }

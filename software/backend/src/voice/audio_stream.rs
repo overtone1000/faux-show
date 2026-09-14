@@ -5,7 +5,7 @@ use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
 use tokio::sync::{mpsc, watch};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::run_whisper_client};
+use crate::voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}};
 
 const SAMPLE_RATE:usize=16000;
 const CHANNELS:u16=1;
@@ -48,6 +48,7 @@ async fn voice_command_listener(
     let (wakeword_chunk_transmitter, wakeword_chunk_receiver) = mpsc::channel::<Box<[i16;CHUNK_SIZE]>>(CHUNK_BUFFER_MULTIPLE);
     let (last_detected_wakeword_sender, mut last_detected_wakeword_receiver) = watch::channel::<Option<SystemTime>>(None);
     let (whisper_websocket_message_transmitter, whisper_websocket_message_receiver) = mpsc::channel::<Message>(WEBSOCKET_MESSAGE_BUFFER_LENGTH);   
+    let (whisper_websocket_control_transmitter, whisper_websocket_control_receiver) = watch::channel::<WhisperClientControl>(WhisperClientControl::Stop);   
 
     //Audio stream initialization
     let bits_per_sample_u32:u32 = BITS_PER_SAMPLE.try_into().expect("Should convert.");
@@ -74,12 +75,24 @@ async fn voice_command_listener(
 
     let mut audio_buffer = CircularBuffer::<AUDIO_BUFFER_SIZE,i16>::new();
     
-    let mut stream_to_whisper = false;
     let duration_to_stream_to_whisper_after_detection:Duration = Duration::from_secs(10);
     let mut last_detection:Option<SystemTime>=None;
 
+    let mut stream_to_whisper = false;
+    
     let data_fn = move |data: &[i16], _: &cpal::InputCallbackInfo| {
-        
+
+        let set_whisper_control_mode=|mode:WhisperClientControl|
+        {
+            match whisper_websocket_control_transmitter.send(mode.clone())
+            {
+                Ok(())=>(),
+                Err(e)=>{
+                    eprintln!("{:?}",e);
+                }
+            };
+        };
+
         //Move data to buffer
         audio_buffer.extend_from_slice(data);
 
@@ -113,6 +126,8 @@ async fn voice_command_listener(
                 if has_changed
                 {
                     last_detection=last_detected_wakeword_receiver.borrow_and_update().clone();
+                    
+                    set_whisper_control_mode(WhisperClientControl::Start);
                     stream_to_whisper=true;
 
                     println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
@@ -162,6 +177,7 @@ async fn voice_command_listener(
                     if SystemTime::now()>comptime
                     {
                         println!("Stopping stream to whisper.");
+                        set_whisper_control_mode(WhisperClientControl::Stop);
                         stream_to_whisper=false;
                         last_detection=None;
                     }
@@ -205,6 +221,7 @@ async fn voice_command_listener(
     
     let whisper_handle=run_whisper_client(
         url,
+        whisper_websocket_control_receiver,
         whisper_websocket_message_receiver
     );
 
