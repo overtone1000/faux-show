@@ -11,6 +11,9 @@
 	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
 
+    //development mode flag
+    const socket_url = import.meta.env.DEV ? "ws:/127.0.0.1:30125" : "ws:/"+location.host;
+    
     //Hook console;
     enum ConsoleType {
         Debug,
@@ -261,7 +264,6 @@
     let socket:WebSocket|undefined=undefined;
     let socket_state:boolean=$state(false);
     function open_socket(){
-        const socket_url = "ws:/"+location.host;
         console.debug("Opening websocket");
         socket = new WebSocket(socket_url);
 
