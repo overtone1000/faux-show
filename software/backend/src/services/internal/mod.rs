@@ -32,7 +32,8 @@ pub struct InternalService {
 
 impl InternalService
 {
-    pub fn new(initialization_parameters:&crate::InitializationParameters,
+    pub fn new(
+        initialization_parameters:&crate::InitializationParameters,
         command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>
     )->InternalService
     {

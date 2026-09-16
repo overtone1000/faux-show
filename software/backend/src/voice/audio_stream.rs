@@ -2,10 +2,10 @@ use std::time::{Duration, SystemTime};
 
 use circular_buffer::CircularBuffer;
 use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{mpsc::{self, UnboundedSender}, watch};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}};
+use crate::{commands::{Command, VoiceControlState}, voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}}};
 
 const SAMPLE_RATE:usize=16000;
 const CHANNELS:u16=1;
@@ -20,13 +20,15 @@ const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 
 pub async fn run_voice_command_listener(
     wakeword_onnx_file:&str,
-    url:&str
+    url:&str,
+    command_sender:UnboundedSender<Command>
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     loop {
         let handle=voice_command_listener(
             wakeword_onnx_file,
-            url
+            url,
+            command_sender
         );
         match tokio::join!(handle){
             (Ok(()),)=>(),
@@ -41,7 +43,8 @@ pub async fn run_voice_command_listener(
 
 async fn voice_command_listener(
     wakeword_onnx_file:&str,
-    url:&str
+    url:&str,
+    command_sender:UnboundedSender<Command>
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     //senders and receivers
@@ -129,7 +132,7 @@ async fn voice_command_listener(
                     
                     set_whisper_control_mode(WhisperClientControl::Start);
                     stream_to_whisper=true;
-
+                    command_sender.send(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
                     println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
                 }
             },
@@ -179,6 +182,7 @@ async fn voice_command_listener(
                         println!("Stopping stream to whisper.");
                         set_whisper_control_mode(WhisperClientControl::Stop);
                         stream_to_whisper=false;
+                        command_sender.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
                         last_detection=None;
                     }
                 },
@@ -206,7 +210,7 @@ async fn voice_command_listener(
 
     match stream.play()
     {
-        Ok(())=>(),
+        Ok(())=>{},
         Err(e)=>{
             eprintln!("Failed to start stream");
             return Err(Box::new(e));
@@ -225,8 +229,10 @@ async fn voice_command_listener(
         whisper_websocket_message_receiver
     );
 
+    command_sender.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
     tokio::join!(wakeword_handle,whisper_handle);
 
     println!("Audio stream joined.");
+    command_sender.send(Command::SetVoiceControlState(VoiceControlState::NotEnabled));
     Ok(())
 }

@@ -78,13 +78,12 @@ pub async fn start_and_run(params:InitializationParameters) {
         //Command receiver doesn't implement clone so can't pass it in to a service.
         let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel::<commands::Command>();
 
-        let external_core=ExternalCore::new(command_sender);
+        let external_core=ExternalCore::new(command_sender.clone());
+        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,external_core.clone());
+        let external_service = StatefulService::create(external_handler);
 
         let internal_handler = InternalService::new(&params, std::sync::Arc::new(tokio::sync::Mutex::new(command_receiver)));
-        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,external_core.clone());
-
-        let internal_service= StatefulService::create(internal_handler);
-        let external_service = StatefulService::create(external_handler);
+        let internal_service= StatefulService::create(internal_handler);  
 
         let internal_service_future = internal_service.start(
             IpAddr::V4(Ipv4Addr::LOCALHOST),
@@ -119,8 +118,8 @@ pub async fn start_and_run(params:InitializationParameters) {
 
         let voice_command_handle=run_voice_command_listener(
             &params.wakeword_onnx_file,
-            &params.whisper_server_url
-            
+            &params.whisper_server_url,
+            command_sender
         );
 
         println!("Services created.");
