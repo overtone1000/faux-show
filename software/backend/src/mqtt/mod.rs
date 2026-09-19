@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use has_mqtt::{component::HomeAssistantDeviceComponent, device::HomeAssistantDeviceConfiguration, mqtt_client::{DEFAULT_DISCOVERY_PREFIX, HASMQTTClient}, platform::{switch::{component::Switch, state::SwitchState}, text::component::Text}};
 use tokio::sync::{broadcast, mpsc::UnboundedSender};
 
-use crate::comm::{external_commands::Command, internal_notifications::InternalServiceNotification};
+use crate::comm::{CommunicationHub, CommunicationSpoke, external_commands::Command, internal_notifications::InternalServiceNotification};
 
 #[derive(Debug)]
 pub struct MQTTConfiguration
@@ -19,7 +19,7 @@ pub struct MQTTConfiguration
     pub discovery_prefix:String
 }
 
-pub async fn get_has_client(command_sender:UnboundedSender<Command>, internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>, config:&MQTTConfiguration, kiosk_uid:u64)->HASMQTTClient
+pub async fn get_has_client(spoke:CommunicationSpoke, config:&MQTTConfiguration, kiosk_uid:u64)->HASMQTTClient
 {
 
     let mut cmps_hm:HashMap<String,HomeAssistantDeviceComponent> = HashMap::new();
@@ -28,8 +28,8 @@ pub async fn get_has_client(command_sender:UnboundedSender<Command>, internal_se
         cmps_hm.insert(kvp.0,kvp.1);
     };
 
-    add_cmp(monitor_switch(&config.id, &config.name, kiosk_uid, command_sender.clone(), internal_service_notification_sender.clone()));
-    add_cmp(auto_tab_set(&config.id, &config.name, command_sender));
+    add_cmp(monitor_switch(&config.id, &config.name, kiosk_uid, spoke.clone()));
+    add_cmp(auto_tab_set(&config.id, &config.name, spoke));
 
     let device=HomeAssistantDeviceConfiguration::new(
         config.id.to_string(),
@@ -50,27 +50,20 @@ pub async fn get_has_client(command_sender:UnboundedSender<Command>, internal_se
     ).await
 }
 
-fn monitor_switch(device_id:&str, device_name:&str, kiosk_uid:u64, command_sender:UnboundedSender<Command>, internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>)->(String,HomeAssistantDeviceComponent)
+fn monitor_switch(
+    device_id:&str, 
+    device_name:&str, 
+    kiosk_uid:u64, 
+    spoke:CommunicationSpoke
+)->(String,HomeAssistantDeviceComponent)
 {
     let handle_state_change =move |state:SwitchState|->Option<SwitchState>
     {
         let command:Command=Command::SetScreenState(state.as_bool());
-        match command_sender.send(command)
-        {
-            Ok(_) => (),
-            Err(e) => {
-                eprintln!("{:?}",e);
-            },
-        }
-
+        spoke.send_external_command(command);
+        
         let notification:InternalServiceNotification=InternalServiceNotification::Sleep(state.as_bool());
-        match internal_service_notification_sender.send(notification)
-        {
-            Ok(_) => (),
-            Err(e) => {
-                eprintln!("{:?}",e);
-            },
-        }
+        spoke.notify_of_state_change(notification);
 
         match crate::device::set_screen_state(state.as_bool(),&kiosk_uid)
         {
@@ -94,19 +87,23 @@ fn monitor_switch(device_id:&str, device_name:&str, kiosk_uid:u64, command_sende
     )
 }
 
-fn auto_tab_set(device_id:&str, device_name:&str, command_sender:UnboundedSender<Command>)->(String,HomeAssistantDeviceComponent)
+fn auto_tab_set(
+    device_id:&str,
+    device_name:&str,
+    spoke:CommunicationSpoke
+)->(String,HomeAssistantDeviceComponent)
 {
     let handle_state_change =move |tab_config:String|->Option<String>
     {
         let command:Command=Command::AutoTab(tab_config.to_string());
-        match command_sender.send(command)
+        if spoke.send_external_command(command)
         {
-            Ok(_) => Some(tab_config),
-            Err(e) => {
-                eprintln!("{:?}",e);
-                None
-            },
+            Some(tab_config)
         }
+        else {
+            None            
+        }
+    
     };
 
     (

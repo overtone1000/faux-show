@@ -5,7 +5,7 @@ use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
 use tokio::sync::{broadcast::Receiver, mpsc::{self, UnboundedSender}, watch};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{comm::{external_commands::{Command, VoiceControlState}, internal_notifications::InternalServiceNotification}, voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}}};
+use crate::{comm::{CommunicationHub, CommunicationSpoke, external_commands::{Command, VoiceControlState}, internal_notifications::InternalServiceNotification}, voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}}};
 
 
 const SAMPLE_RATE:usize=16000;
@@ -22,26 +22,22 @@ const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 pub async fn run_voice_command_listener(
     wakeword_onnx_file:&str,
     url:&str,
-    command_sender:UnboundedSender<Command>,
-    mut internal_service_notification_receiver:Receiver<InternalServiceNotification>
+    //external_command_sender:UnboundedSender<Command>,
+    //mut internal_service_notification_receiver:Receiver<InternalServiceNotification>
+    spoke:CommunicationSpoke
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     let mut run_voice_command:bool=true;
+    let mut state_receiver=spoke.get_internal_state_receiver();
     loop {
         
         let notification_listener = async {
-            match internal_service_notification_receiver.recv().await
+            //match internal_service_notification_receiver.recv().await
+            match state_receiver.changed().await
             {
-                Ok(notification) => {
-                    match notification
-                    {
-                        InternalServiceNotification::FrontendConnected(connected) => {
-                            connected
-                        },
-                        InternalServiceNotification::Sleep(sleeping) => {
-                            !sleeping
-                        },
-                    }
+                Ok(()) => {
+                    let state = state_receiver.borrow();
+                    state.front_end_connected && !state.sleeping
                 },
                 Err(e) => {
                     eprintln!("{:?}",e);
@@ -56,7 +52,7 @@ pub async fn run_voice_command_listener(
                 voice_command_listener(
                     wakeword_onnx_file,
                     url,
-                    &command_sender
+                    spoke.clone()
                 ).await
             }
             else
@@ -97,7 +93,7 @@ pub async fn run_voice_command_listener(
 async fn voice_command_listener(
     wakeword_onnx_file:&str,
     url:&str,
-    command_sender:&UnboundedSender<Command>
+    spoke:CommunicationSpoke
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     //senders and receivers
@@ -136,7 +132,7 @@ async fn voice_command_listener(
 
     let mut stream_to_whisper = false;
     
-    let command_sender_clone = command_sender.clone();
+    let spoke_clone = spoke.clone();
     let data_fn = move |data: &[i16], _: &cpal::InputCallbackInfo| {
 
         let set_whisper_control_mode=|mode:WhisperClientControl|
@@ -186,11 +182,7 @@ async fn voice_command_listener(
                     
                     set_whisper_control_mode(WhisperClientControl::Start);
                     stream_to_whisper=true;
-                    match command_sender_clone.send(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper))
-                    {
-                        Ok(())=>(),
-                        Err(e)=>{eprintln!("{:?}",e);}
-                    }
+                    spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
                     println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
                 }
             },
@@ -240,11 +232,7 @@ async fn voice_command_listener(
                         println!("Stopping stream to whisper.");
                         set_whisper_control_mode(WhisperClientControl::Stop);
                         stream_to_whisper=false;
-                        match command_sender_clone.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword))
-                        {
-                            Ok(())=>(),
-                            Err(e)=>{eprintln!("{:?}",e);}
-                        }
+                        spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
                         last_detection=None;
                     }
                 },
@@ -291,19 +279,11 @@ async fn voice_command_listener(
         whisper_websocket_message_receiver
     );
 
-    match command_sender.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword))
-    {
-        Ok(())=>(),
-        Err(e)=>{eprintln!("{:?}",e);}
-    }
+    spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
     tokio::join!(wakeword_handle,whisper_handle);
 
     println!("Audio stream joined.");
 
-    match command_sender.send(Command::SetVoiceControlState(VoiceControlState::NotEnabled))
-    {
-        Ok(())=>(),
-        Err(e)=>{eprintln!("{:?}",e);}
-    }
+    spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::NotEnabled));
     Ok(())
 }

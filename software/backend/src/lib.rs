@@ -19,6 +19,7 @@ use hyper_services::service::certificates::generate_simple_certificates;
 use hyper_services::service::spawn::ConnectionProperties;
 use hyper_services::service::stateful_service::StatefulService;
 
+use crate::comm::CommunicationHub;
 use crate::comm::external_commands::Command;
 use crate::comm::internal_notifications::InternalServiceNotification;
 use crate::mqtt::MQTTConfiguration;
@@ -77,16 +78,20 @@ pub async fn start_and_run(params:InitializationParameters) {
         println!("Starting services.");
 
         //Command receiver doesn't implement clone so can't pass it in to a service.
-        let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel::<Command>();
-        let (internal_service_notification_sender, internal_service_notification_receiver) = tokio::sync::broadcast::channel::<InternalServiceNotification>(10);
+        //let (external_command_sender, external_command_receiver) = tokio::sync::mpsc::unbounded_channel::<Command>();
+
+        let (mut hub, external_command_receiver)=CommunicationHub::new();
+        let spoke=hub.spoke().clone();
+        //let (internal_service_notification_sender, internal_service_notification_receiver) = tokio::sync::broadcast::channel::<InternalServiceNotification>(10);
         
-        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,command_sender.clone());
+        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,hub.spoke().clone());
         let external_service = StatefulService::create(external_handler);
 
         let internal_handler = InternalService::new(
             &params,
-            std::sync::Arc::new(tokio::sync::Mutex::new(command_receiver)),
-            internal_service_notification_sender.clone()
+            std::sync::Arc::new(tokio::sync::Mutex::new(external_command_receiver)), //partial move of hub
+            spoke.clone()
+            //internal_service_notification_sender.clone()
         );
         let internal_service= StatefulService::create(internal_handler);  
 
@@ -118,19 +123,26 @@ pub async fn start_and_run(params:InitializationParameters) {
         };
 
 
-        let mqtt_client=mqtt::get_has_client(command_sender.clone(), internal_service_notification_sender.clone(),&params.mqtt_config, params.kiosk_uid).await;
+        let mqtt_client=mqtt::get_has_client(spoke.clone(), &params.mqtt_config, params.kiosk_uid).await;
         let mqtt_client_future = mqtt_client.run();
 
         let voice_command_handle=run_voice_command_listener(
             &params.wakeword_onnx_file,
             &params.whisper_server_url,
-            command_sender,
-            internal_service_notification_receiver
+            spoke
         );
+
+        let hub_future=hub.start();
 
         println!("Services created.");
 
-        match tokio::try_join!(internal_service_future, external_service_future, mqtt_client_future, voice_command_handle)
+        match tokio::try_join!(
+            hub_future,
+            internal_service_future,
+            external_service_future,
+            mqtt_client_future,
+            voice_command_handle
+        )
         {
             Ok(_) => println!("Services closed gracefully."),
             Err(e) => {

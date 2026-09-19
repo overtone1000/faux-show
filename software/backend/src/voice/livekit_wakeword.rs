@@ -69,7 +69,7 @@ async fn wakeword_listener_loop(
                             }
                             else
                             {
-                                println!("No detection (score {})", score)
+                                //println!("No detection (score {})", score)
                             }
                         }
                     },

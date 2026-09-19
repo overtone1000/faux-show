@@ -6,23 +6,23 @@ use hyper_services::{
 
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{comm::external_commands::Command, device::set_screen_state};
+use crate::{comm::{CommunicationSpoke, external_commands::Command}, device::set_screen_state};
 
 
 #[derive(Clone)]
 pub struct ExternalService {
     auth:Auth,
     kiosk_uid:u64,
-    command_sender:UnboundedSender<Command>
+    spoke:CommunicationSpoke
 }
 
 impl ExternalService {
-    pub fn new(auth:&Auth,kiosk_uid:&u64,command_sender:UnboundedSender<Command>) -> ExternalService
+    pub fn new(auth:&Auth,kiosk_uid:&u64,spoke:CommunicationSpoke) -> ExternalService
     {
         ExternalService{
             auth:auth.clone(),
             kiosk_uid:kiosk_uid.to_owned(),
-            command_sender,
+            spoke
         }
     }
 
@@ -39,13 +39,7 @@ impl ExternalService {
         {
             Command::AutoTab(_) => {
                 println!("Passing directly to internal service without modification.");
-                match self.command_sender.send(command)
-                {
-                    Ok(_)=>(),
-                    Err(e)=>{
-                        eprintln!("Error during internal command processing. {:?}",e);
-                    }
-                }
+                self.spoke.send_external_command(command);
             },
             Command::SetScreenState(state) => {
                 match set_screen_state(state, &self.kiosk_uid)

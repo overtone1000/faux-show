@@ -10,10 +10,7 @@
 	import Slideshow from './slideshow.svelte';
 	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
-
-    //development mode flag
-    const socket_url = import.meta.env.DEV ? "ws:/127.0.0.1:30125" : "ws:/"+location.host;
-    
+  
     //Hook console;
     enum ConsoleType {
         Debug,
@@ -270,26 +267,29 @@
     let socket:WebSocket|undefined=undefined;
     let socket_state:boolean=$state(false);
     function open_socket(){
-        console.debug("Opening websocket");
-        socket = new WebSocket(socket_url);
+        if(socket_url)
+        {
+            console.debug("Opening websocket");
+            socket = new WebSocket(socket_url);
 
-        // Connection opened
-        socket.onopen=(event) => {
-            console.debug("Connection opened.");
-            socket_state=true;
-        };
+            // Connection opened
+            socket.onopen=(event) => {
+                console.debug("Connection opened.");
+                socket_state=true;
+            };
 
-        // Listen for messages
-        socket.onmessage = (event) => {
-            console.log("Message from server ", event.data);
-            handle_server_command(JSON.parse(event.data));
-        };
+            // Listen for messages
+            socket.onmessage = (event) => {
+                console.log("Message from server ", event.data);
+                handle_server_command(JSON.parse(event.data));
+            };
 
-        // Handle disconnect
-        socket.onclose = (event)=>{
-            setTimeout(open_socket,1000);
-            socket_state=false;
-        };
+            // Handle disconnect
+            socket.onclose = (event)=>{
+                setTimeout(open_socket,1000);
+                socket_state=false;
+            };
+        }
     };
 
     function build_tabs(tabs_config:TabsConfig[]) {
@@ -339,7 +339,11 @@
         }
     }
 
+    let socket_url:undefined|string = undefined;
     onMount(()=>{
+        //development mode flag
+        socket_url = import.meta.env.DEV ? "ws:/127.0.0.1:30125" : "ws:/"+location.host;
+        
         open_socket();
         get_tabs();
     });

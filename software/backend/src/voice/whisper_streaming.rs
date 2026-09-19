@@ -234,7 +234,9 @@ async fn whisper_client_loop(
                                                         println!("Got message: {}",message);
                                                         match message.as_str()
                                                         {
-                                                            "SERVER_READY"=>{println!("This might be a good time to queue in UI that wakeword was recognized and whisper is listening.");}
+                                                            "SERVER_READY"=>{
+                                                                println!("Whisper is ready.");
+                                                            }
                                                             _=>()
                                                         };
                                                     },
