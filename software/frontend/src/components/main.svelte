@@ -223,6 +223,7 @@
     }
 
     let photoprism_key=$state<string|undefined>(undefined);
+    let voice_control_state=$state<VoiceControlState>(VoiceControlState.NotEnabled);
     function handle_server_command(command:Command)
     {
         console.debug("Handling command.");
@@ -259,9 +260,12 @@
         {
             display_on=command.SetScreenState
         }
-    }
 
-    let voice_control_state:VoiceControlState=VoiceControlState.NotEnabled;
+        if(command.SetVoiceControlState)
+        {
+            voice_control_state=command.SetVoiceControlState as VoiceControlState;
+        }
+    }
 
     let socket:WebSocket|undefined=undefined;
     let socket_state:boolean=$state(false);

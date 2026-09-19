@@ -28,7 +28,9 @@ ssh into device and
         - [x] Need a unified data function for audio stream
             This should probably take the form primarily of the circular buffer of the wakeword listener with access to the whisper stream. When wakeword detection occurs, send some amount of the circular buffer (good way to determine where the end of the wakeword is from livekit-wakeword?) to the whisper stream and then continue to do so for some amount of time (10s?) or until a command is definitely identified from the returning transcription.
         - [x] Implemented, need to test!
-    - [ ] Better handling of whisper client
+    - [x] Better handling of whisper client
         - Need to connect for each instance of a stream to/from whisper server instead of keeping open indefinitely
-    - [ ] Convert sample functions to structs with initialization
-    - [ ] Test UI
+    - [x] Convert sample functions to structs with initialization
+    - [x] Test UI
+    - [ ] Internal state management is brittle especially in "audio_stream". Probably need a single listener for all state changes that then broadcasts full state updates to the rest of the internal services.
+    - [ ] Need to recognize some commands and make things happen!

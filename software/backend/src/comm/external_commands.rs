@@ -67,10 +67,10 @@ impl<'de> Deserialize<'de> for VoiceControlState
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Command
 {
-    AutoTab(String),
-    PhotoprismKey(String),
-    SetScreenState(bool),
-    SetVoiceControlState(VoiceControlState)
+    AutoTab(String), //Tell frontend to display a specific tab
+    PhotoprismKey(String), //Give photoprism key to frontend
+    SetScreenState(bool), //Tell frontend to render a simple display
+    SetVoiceControlState(VoiceControlState) //Tell frontend voice control state
 }
 
 #[cfg(test)]

@@ -8,14 +8,16 @@ use hyper_services::{
 
 use hyper_tungstenite::{HyperWebsocket, WebSocketStream, tungstenite::{self, Utf8Bytes}};
 use hyper_util::rt::TokioIo;
-use tokio::sync::{Mutex, mpsc::{self, UnboundedReceiver, UnboundedSender}};
+use serde::{Deserialize, Serialize};
+use tokio::sync::{Mutex, broadcast, mpsc::{self, UnboundedReceiver, UnboundedSender}, watch};
 use tungstenite::Message;
 use websocket::WebSocketStreamNext;
 
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
-use crate::commands::Command;
+use crate::comm::{external_commands::Command, internal_notifications::InternalServiceNotification};
+
 
 const CONFIG_PREFACE:&str="/config";
 
@@ -24,6 +26,7 @@ pub struct InternalService {
     internal_service_static_directory:String,
     config_static_directory:String,
     command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
+    internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>,
     sinks:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,
     sink_handler:Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     photoprism_key:String,
@@ -34,7 +37,8 @@ impl InternalService
 {
     pub fn new(
         initialization_parameters:&crate::InitializationParameters,
-        command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>
+        command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
+        internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>
     )->InternalService
     {
         //let mut header_map:HeaderMap=HeaderMap::new();
@@ -44,6 +48,7 @@ impl InternalService
             internal_service_static_directory: initialization_parameters.internal_service_static_directory.clone(),
             config_static_directory: initialization_parameters.config_static_directory.clone(),
             command_receiver,
+            internal_service_notification_sender,
             sinks:Arc::new(Mutex::new(HashMap::new())),
             sink_handler:Arc::new(Mutex::new(None)),
             photoprism_key:initialization_parameters.photoprism_key.to_string(),
@@ -52,7 +57,7 @@ impl InternalService
     }
 
     //commands:Arc<Mutex<VecDeque<Command>>>
-    async fn handle_websocket_sink(command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>, mut sink:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,)->()
+    async fn handle_websocket_sink(command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>, sink:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,)->()
     {
         println!("Starting websocket sink handler.");
         let mut command_receiver= command_receiver.lock().await;
@@ -129,6 +134,7 @@ impl InternalService
 
     async fn sink_initialization(&self, sink:&mut SplitSink<WebSocketStream<TokioIo<Upgraded>>, Message>)->(){
         println!("Sink initializing.");
+        self.internal_service_notification_sender.send(InternalServiceNotification::FrontendConnected(true));
         match serde_json::to_string(&Command::PhotoprismKey(self.photoprism_key.clone()))
         {
             Ok(key)=>{
@@ -144,6 +150,10 @@ impl InternalService
                 eprintln!("{:?}",e);
             }
         };
+    }
+
+    fn sink_destruction(&self)->(){
+        self.internal_service_notification_sender.send(InternalServiceNotification::FrontendConnected(false));
     }
 
     async fn handle_websocket(self, websocket: HyperWebsocket) -> () {       
@@ -162,7 +172,7 @@ impl InternalService
         //Send initialization on sink
         self.sink_initialization(&mut sink).await;
 
-        let command_receiver = self.command_receiver;        
+        let command_receiver_clone = self.command_receiver.clone();
 
         //Add the sink to the sink vector. Make sure a sink handler is running. If it is, let it continue.
         let sink_key={
@@ -181,7 +191,7 @@ impl InternalService
                 Some(_) => (),
                 None => {
                     let sinksclone=self.sinks.clone();
-                    *current_handler=Some(tokio::spawn(async move {Self::handle_websocket_sink(command_receiver, sinksclone).await}))
+                    *current_handler=Some(tokio::spawn(async move {Self::handle_websocket_sink(command_receiver_clone, sinksclone).await}))
                 },
             };
 
@@ -222,6 +232,7 @@ impl InternalService
         }
 
        //If there are no more sinks, stop the sink handler
+        self.sink_destruction();
     }
 }
 

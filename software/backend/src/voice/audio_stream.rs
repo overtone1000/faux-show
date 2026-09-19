@@ -2,10 +2,11 @@ use std::time::{Duration, SystemTime};
 
 use circular_buffer::CircularBuffer;
 use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
-use tokio::sync::{mpsc::{self, UnboundedSender}, watch};
+use tokio::sync::{broadcast::Receiver, mpsc::{self, UnboundedSender}, watch};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{commands::{Command, VoiceControlState}, voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}}};
+use crate::{comm::{external_commands::{Command, VoiceControlState}, internal_notifications::InternalServiceNotification}, voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}}};
+
 
 const SAMPLE_RATE:usize=16000;
 const CHANNELS:u16=1;
@@ -21,30 +22,82 @@ const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 pub async fn run_voice_command_listener(
     wakeword_onnx_file:&str,
     url:&str,
-    command_sender:UnboundedSender<Command>
+    command_sender:UnboundedSender<Command>,
+    mut internal_service_notification_receiver:Receiver<InternalServiceNotification>
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
+    let mut run_voice_command:bool=true;
     loop {
-        let handle=voice_command_listener(
-            wakeword_onnx_file,
-            url,
-            command_sender
-        );
+        
+        let notification_listener = async {
+            match internal_service_notification_receiver.recv().await
+            {
+                Ok(notification) => {
+                    match notification
+                    {
+                        InternalServiceNotification::FrontendConnected(connected) => {
+                            connected
+                        },
+                        InternalServiceNotification::Sleep(sleeping) => {
+                            !sleeping
+                        },
+                    }
+                },
+                Err(e) => {
+                    eprintln!("{:?}",e);
+                    false
+                },
+            }
+        };
+
+        let handle=async {
+            if run_voice_command
+            {
+                voice_command_listener(
+                    wakeword_onnx_file,
+                    url,
+                    &command_sender
+                ).await
+            }
+            else
+            {
+                std::future::pending().await
+            }
+        };
+
+        /*
         match tokio::join!(handle){
             (Ok(()),)=>(),
             (Err(e),)=>{
                 eprintln!("{:?}",e);
             }
         };
-        println!("Audio stream returned. Restarting in one second.");
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        */
+        tokio::select! {
+            run_voice_command_new_value=notification_listener=>{
+                run_voice_command=run_voice_command_new_value;
+            },
+            result=handle=>{
+                match result
+                {
+                    Ok(())=>{
+                        println!("Audio stream returned. Restarting in one second.");
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    },
+                    Err(e)=>{
+                        eprintln!("{:?}",e);
+                        tokio::time::sleep(Duration::from_secs(10)).await;
+                    }
+                }
+            }
+        }
     }
 }
 
 async fn voice_command_listener(
     wakeword_onnx_file:&str,
     url:&str,
-    command_sender:UnboundedSender<Command>
+    command_sender:&UnboundedSender<Command>
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     //senders and receivers
@@ -83,6 +136,7 @@ async fn voice_command_listener(
 
     let mut stream_to_whisper = false;
     
+    let command_sender_clone = command_sender.clone();
     let data_fn = move |data: &[i16], _: &cpal::InputCallbackInfo| {
 
         let set_whisper_control_mode=|mode:WhisperClientControl|
@@ -132,7 +186,11 @@ async fn voice_command_listener(
                     
                     set_whisper_control_mode(WhisperClientControl::Start);
                     stream_to_whisper=true;
-                    command_sender.send(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
+                    match command_sender_clone.send(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper))
+                    {
+                        Ok(())=>(),
+                        Err(e)=>{eprintln!("{:?}",e);}
+                    }
                     println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
                 }
             },
@@ -182,7 +240,11 @@ async fn voice_command_listener(
                         println!("Stopping stream to whisper.");
                         set_whisper_control_mode(WhisperClientControl::Stop);
                         stream_to_whisper=false;
-                        command_sender.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
+                        match command_sender_clone.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword))
+                        {
+                            Ok(())=>(),
+                            Err(e)=>{eprintln!("{:?}",e);}
+                        }
                         last_detection=None;
                     }
                 },
@@ -229,10 +291,19 @@ async fn voice_command_listener(
         whisper_websocket_message_receiver
     );
 
-    command_sender.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
+    match command_sender.send(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword))
+    {
+        Ok(())=>(),
+        Err(e)=>{eprintln!("{:?}",e);}
+    }
     tokio::join!(wakeword_handle,whisper_handle);
 
     println!("Audio stream joined.");
-    command_sender.send(Command::SetVoiceControlState(VoiceControlState::NotEnabled));
+
+    match command_sender.send(Command::SetVoiceControlState(VoiceControlState::NotEnabled))
+    {
+        Ok(())=>(),
+        Err(e)=>{eprintln!("{:?}",e);}
+    }
     Ok(())
 }

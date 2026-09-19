@@ -3,24 +3,26 @@ use hyper::{body::Incoming, Method, Request, Response};
 use hyper_services::{
     commons::HandlerResult, request_processing::{Auth, collect_incoming}, response_building::{bad_request, ok, server_side_failure}, service::{stateful_service::StatefulHandler, stateless_service::StatelessHandler}
 };
+
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{commands::Command, device::set_screen_state, services::external::external_core::ExternalCore};
+use crate::{comm::external_commands::Command, device::set_screen_state};
+
 
 #[derive(Clone)]
 pub struct ExternalService {
     auth:Auth,
     kiosk_uid:u64,
-    external_core:ExternalCore
+    command_sender:UnboundedSender<Command>
 }
 
 impl ExternalService {
-    pub fn new(auth:&Auth,kiosk_uid:&u64,external_core:ExternalCore) -> ExternalService
+    pub fn new(auth:&Auth,kiosk_uid:&u64,command_sender:UnboundedSender<Command>) -> ExternalService
     {
         ExternalService{
             auth:auth.clone(),
             kiosk_uid:kiosk_uid.to_owned(),
-            external_core,
+            command_sender,
         }
     }
 
@@ -37,7 +39,7 @@ impl ExternalService {
         {
             Command::AutoTab(_) => {
                 println!("Passing directly to internal service without modification.");
-                match self.external_core.command_sender.send(command)
+                match self.command_sender.send(command)
                 {
                     Ok(_)=>(),
                     Err(e)=>{

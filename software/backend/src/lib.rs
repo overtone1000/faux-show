@@ -1,5 +1,5 @@
 pub(crate) mod services;
-pub(crate) mod commands;
+pub(crate) mod comm;
 pub(crate) mod device;
 pub(crate) mod voice;
 
@@ -19,8 +19,9 @@ use hyper_services::service::certificates::generate_simple_certificates;
 use hyper_services::service::spawn::ConnectionProperties;
 use hyper_services::service::stateful_service::StatefulService;
 
+use crate::comm::external_commands::Command;
+use crate::comm::internal_notifications::InternalServiceNotification;
 use crate::mqtt::MQTTConfiguration;
-use crate::services::external::external_core::ExternalCore;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
 use crate::voice::audio_stream::{run_voice_command_listener};
@@ -76,13 +77,17 @@ pub async fn start_and_run(params:InitializationParameters) {
         println!("Starting services.");
 
         //Command receiver doesn't implement clone so can't pass it in to a service.
-        let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel::<commands::Command>();
-
-        let external_core=ExternalCore::new(command_sender.clone());
-        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,external_core.clone());
+        let (command_sender, command_receiver) = tokio::sync::mpsc::unbounded_channel::<Command>();
+        let (internal_service_notification_sender, internal_service_notification_receiver) = tokio::sync::broadcast::channel::<InternalServiceNotification>(10);
+        
+        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,command_sender.clone());
         let external_service = StatefulService::create(external_handler);
 
-        let internal_handler = InternalService::new(&params, std::sync::Arc::new(tokio::sync::Mutex::new(command_receiver)));
+        let internal_handler = InternalService::new(
+            &params,
+            std::sync::Arc::new(tokio::sync::Mutex::new(command_receiver)),
+            internal_service_notification_sender.clone()
+        );
         let internal_service= StatefulService::create(internal_handler);  
 
         let internal_service_future = internal_service.start(
@@ -113,13 +118,14 @@ pub async fn start_and_run(params:InitializationParameters) {
         };
 
 
-        let mqtt_client=mqtt::get_has_client(external_core, &params.mqtt_config, params.kiosk_uid).await;
+        let mqtt_client=mqtt::get_has_client(command_sender.clone(), internal_service_notification_sender.clone(),&params.mqtt_config, params.kiosk_uid).await;
         let mqtt_client_future = mqtt_client.run();
 
         let voice_command_handle=run_voice_command_listener(
             &params.wakeword_onnx_file,
             &params.whisper_server_url,
-            command_sender
+            command_sender,
+            internal_service_notification_receiver
         );
 
         println!("Services created.");
