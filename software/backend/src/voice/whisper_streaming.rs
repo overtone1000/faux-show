@@ -235,7 +235,10 @@ async fn whisper_client_loop<T>(
                                         match serde_json::from_slice::<LivekitTranscriptionMessage>(utf8_bytes.as_bytes())
                                         {
                                             Ok(response)=>{
-                                                continue_loop=handler_function(response);
+                                                if!(handler_function(response))
+                                                {
+                                                    println!("Need to initiate websocket closure here!")
+                                                }
                                             },
                                             Err(e)=>{
                                                 eprintln!("{:?}",e);

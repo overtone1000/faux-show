@@ -63,11 +63,18 @@ impl<'de> Deserialize<'de> for VoiceControlState
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct AutoTabConfig
+{
+    pub url:String,
+    pub priority:u32,
+    pub timeout_seconds:u32
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Command
 {
-    AutoTab(String), //Tell frontend to display a specific tab
+    AutoTab(AutoTabConfig), //Tell frontend to display a specific tab
     PhotoprismKey(String), //Give photoprism key to frontend
     SetScreenState(bool), //Tell frontend to render a simple display
     SetVoiceControlState(VoiceControlState) //Tell frontend voice control state
@@ -89,7 +96,12 @@ mod tests {
 
     #[test]
     fn serialization() {
-        check_serialization(&Command::AutoTab( "https://www.example.com".to_string()));
+        check_serialization(&Command::AutoTab(
+            AutoTabConfig { 
+                url: "https://www.example.com".to_string(),
+                priority: 3,
+                timeout_seconds: 60
+        }));
         check_serialization(&Command::SetScreenState(true));
     }
 }

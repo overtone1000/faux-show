@@ -1,11 +1,11 @@
-export type TabConfig = {
+export type AutoTab = {
     url:string,
     priority:number,
     timeout_seconds:number
 };
 
 export type AutoTabEntry = {
-    config:TabConfig,
+    config:AutoTab,
     expiry:Date
 };
 
@@ -17,7 +17,7 @@ export enum VoiceControlState
 }
 
 export type Command = {
-    AutoTab?:string,
+    AutoTab?:AutoTab,
     PhotoprismKey?:string,
     SetScreenState?:boolean,
     SetVoiceControlState?:VoiceControlState

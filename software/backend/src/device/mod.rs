@@ -15,7 +15,7 @@ pub(crate) fn set_screen_state(screen_on:bool, kiosk_uid:&u64)->Result<(),Box<dy
         false=>"--off"
     };
 
-    println!("{:?}",std::env::var("PATH"));
+    //println!("{:?}",std::env::var("PATH"));
 
     //Have to add path to wlr-randr as packaged rust application path is limited
     let path = "/run/current-system/sw/bin/";

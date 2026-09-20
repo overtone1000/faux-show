@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use has_mqtt::{component::HomeAssistantDeviceComponent, device::HomeAssistantDeviceConfiguration, mqtt_client::{DEFAULT_DISCOVERY_PREFIX, HASMQTTClient}, platform::{switch::{component::Switch, state::SwitchState}, text::component::Text}};
+use hyper_util::server::conn::auto;
 use tokio::sync::{broadcast, mpsc::UnboundedSender};
 
-use crate::comm::{CommunicationHub, CommunicationSpoke, external_commands::Command, internal_notifications::InternalServiceNotification};
+use crate::comm::{CommunicationHub, CommunicationSpoke, external_commands::{AutoTabConfig, Command}, internal_notifications::InternalServiceNotification};
 
 #[derive(Debug)]
 pub struct MQTTConfiguration
@@ -95,15 +96,19 @@ fn auto_tab_set(
 {
     let handle_state_change =move |tab_config:String|->Option<String>
     {
-        let command:Command=Command::AutoTab(tab_config.to_string());
-        if spoke.send_external_command(command)
+        match serde_json::from_str::<AutoTabConfig>(&tab_config)
         {
-            Some(tab_config)
-        }
-        else {
-            None            
-        }
-    
+            Ok(autotabdata) => {
+                if spoke.send_external_command(Command::AutoTab(autotabdata))
+                {
+                    Some(tab_config)
+                }
+                else {
+                    None            
+                }
+            },
+            Err(e) => {eprintln!("{:?}",e); None},
+        }       
     };
 
     (

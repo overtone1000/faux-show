@@ -6,7 +6,7 @@
 	import { onMount } from 'svelte';
 	import Time from './time.svelte';
 	import TimerPage, { type Timer, type TimerState as TimerState } from './timer_page.svelte';
-	import { VoiceControlState, type AutoTabEntry, type Command, type TabConfig } from '$lib/commands';
+	import { VoiceControlState, type AutoTabEntry, type Command, type AutoTab } from '$lib/commands';
 	import Slideshow from './slideshow.svelte';
 	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
@@ -136,7 +136,7 @@
     }
 
     let manual_tab_props=$state<TabProps|null>(null);
-    let auto_tab_config=$state<TabConfig|null>(null);
+    let auto_tab_config=$state<AutoTab|null>(null);
 
     let active_tab_props=$state<TabProps|null>(null);
 
@@ -180,15 +180,21 @@
             }
             else
             {
-                if(selected_config===undefined || 
+                if(
+                    selected_config===undefined || 
                     auto_tab_entry.config.priority>selected_config.config.priority ||
                     (
                         auto_tab_entry.config.priority==selected_config.config.priority &&
-                        auto_tab_entry.expiry<selected_config.expiry
+                        selected_config.expiry<auto_tab_entry.expiry
                     )
                 )
                 {
+                    console.debug(selected_config,auto_tab_entry,"This entry beats current entry. Updating selected config.");
                     selected_config=auto_tab_entry;
+                }
+                else
+                {
+                    console.debug(selected_config,auto_tab_entry,"Current entry wins. Keeping current entry.");
                 }
             }
         }
@@ -199,7 +205,7 @@
         {
             if(selected_config.config!==auto_tab_config)
             {
-                auto_tab_config=selected_config.config;   
+                auto_tab_config=selected_config.config;
             }
             if(update_active_tab)
             {
@@ -226,7 +232,7 @@
         console.debug("Handling command.");
         if(command.AutoTab)
         {
-            let auto_tab:TabConfig=JSON.parse(command.AutoTab);
+            let auto_tab:AutoTab=command.AutoTab;
             console.debug("Received auto tab.",auto_tab);
 
             if(auto_tab && auto_tab.url && auto_tab.priority && auto_tab.timeout_seconds)

@@ -2,7 +2,7 @@ use std::thread::current;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{comm::{CommunicationSpoke, external_commands::Command}, voice::whisper_streaming::LivekitTranscriptionSegment};
+use crate::{comm::{CommunicationSpoke, external_commands::{AutoTabConfig, Command}}, voice::whisper_streaming::LivekitTranscriptionSegment};
 
 
 #[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
@@ -160,7 +160,11 @@ impl VoiceCommandAction
             VoiceCommandAction::OpenPage(url) => {
                 spoke.send_external_command(
                     Command::AutoTab(
-                        url.to_string()
+                        AutoTabConfig{
+                            url:url.to_string(),
+                            priority:3,
+                            timeout_seconds:5*60
+                        }                        
                     )
                 );
             },

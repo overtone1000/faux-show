@@ -33,9 +33,10 @@ ssh into device and
     - [x] Convert sample functions to structs with initialization
     - [x] Test UI
     - [x] Internal state management is brittle especially in "audio_stream". Probably need a single listener for all state changes that then broadcasts full state updates to the rest of the internal services.
-    - [ ] Need to recognize some commands and make things happen!
-        - [ ] Would be best to have it be part of the config as json
+    - [x] Need to recognize some commands and make things happen!
+        - [x] Would be best to have it be part of the config as json
             - Should have configurable types
-                - [ ] Quick contains: just a word or phrase that has to be in the transcriptiuon
+                - [x] Quick contains: just a word or phrase that has to be in the transcriptiuon
             - Should have configurable actions
-                - [ ] Open a specific page
+                - [x] Open a specific page
+    - [ ] Close whisper socket faster. Search for "println!("Need to initiate websocket closure here!")" to find the right place
