@@ -2,7 +2,7 @@ use std::thread::current;
 
 use serde::{Deserialize, Serialize};
 
-use crate::voice::whisper_streaming::LivekitTranscriptionSegment;
+use crate::{comm::{CommunicationSpoke, external_commands::Command}, voice::whisper_streaming::LivekitTranscriptionSegment};
 
 
 #[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
@@ -31,7 +31,11 @@ pub struct VoiceCommandList{
 }
 
 impl VoiceCommandList {
-    pub fn check_for_match_and_run_best_match(&self, segments:&Vec<LivekitTranscriptionSegment>)->bool
+    pub fn check_for_match_and_run_best_match(
+        &self,
+        segments:&Vec<LivekitTranscriptionSegment>,
+        spoke:&CommunicationSpoke
+    )->bool
     {
         let mut best_match:Option<(&VoiceCommand,f32)>=None;
 
@@ -62,7 +66,7 @@ impl VoiceCommandList {
             Some((best_command,score))=>
             {
                 println!("Best match with score {}: {:?}",score,best_command);
-                best_command.run();
+                best_command.run(spoke);
                 true //Matched, return true
             },
             None=>false //No match, return false
@@ -72,12 +76,12 @@ impl VoiceCommandList {
 
 impl VoiceCommand
 {
-    pub fn run(&self){
+    pub fn run(&self, spoke:&CommunicationSpoke){
         match &self.mode
         {
             VoiceCommandMode::Contains(_) => {
                 match &self.action{
-                    Some(action) => action.run(),
+                    Some(action) => action.run(spoke),
                     None => eprintln!("Not yet implemented."),
                 }
             },
@@ -150,8 +154,17 @@ impl VoiceCommandMode
 
 impl VoiceCommandAction
 {
-    fn run(&self){
-
+    fn run(&self, spoke:&CommunicationSpoke){
+        match self
+        {
+            VoiceCommandAction::OpenPage(url) => {
+                spoke.send_external_command(
+                    Command::AutoTab(
+                        url.to_string()
+                    )
+                );
+            },
+        }
     }
 }
 

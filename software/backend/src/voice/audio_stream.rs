@@ -311,7 +311,7 @@ async fn voice_command_listener(
                     println!("   {}:{}",c,segment.text);
                 }
 
-                !voice_command_list.check_for_match_and_run_best_match(&segments) //If there is no match (check returns false), continue
+                !voice_command_list.check_for_match_and_run_best_match(&segments, &spoke) //If there is no match (check returns false), continue
             },
             None=>true
         }
