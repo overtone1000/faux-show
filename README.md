@@ -32,5 +32,10 @@ ssh into device and
         - Need to connect for each instance of a stream to/from whisper server instead of keeping open indefinitely
     - [x] Convert sample functions to structs with initialization
     - [x] Test UI
-    - [ ] Internal state management is brittle especially in "audio_stream". Probably need a single listener for all state changes that then broadcasts full state updates to the rest of the internal services.
+    - [x] Internal state management is brittle especially in "audio_stream". Probably need a single listener for all state changes that then broadcasts full state updates to the rest of the internal services.
     - [ ] Need to recognize some commands and make things happen!
+        - [ ] Would be best to have it be part of the config as json
+            - Should have configurable types
+                - [ ] Quick contains: just a word or phrase that has to be in the transcriptiuon
+            - Should have configurable actions
+                - [ ] Open a specific page
