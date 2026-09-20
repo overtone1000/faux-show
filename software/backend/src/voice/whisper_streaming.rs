@@ -54,30 +54,30 @@ impl Serialize for FloatString
 }
 
 #[derive(Serialize,Deserialize,Debug)]
-struct LivekitTranscriptionWord
+pub struct LivekitTranscriptionWord
 {
-    word:String,
-    start:FloatString,
-    end:FloatString,
-    probability:f32
+    pub word:String,
+    pub start:FloatString,
+    pub end:FloatString,
+    pub probability:f32
 }
 
 #[derive(Serialize,Deserialize,Debug)]
-struct LivekitTranscriptionSegment
+pub struct LivekitTranscriptionSegment
 {
-    start:FloatString,
-    end:FloatString,
-    text:String,
-    completed:bool,
-    words:Option<Vec<LivekitTranscriptionWord>>
+    pub start:FloatString,
+    pub end:FloatString,
+    pub text:String,
+    pub completed:bool,
+    pub words:Option<Vec<LivekitTranscriptionWord>>
 }
 
 #[derive(Serialize,Deserialize,Debug)]
-struct LivekitTranscriptionMessage
+pub struct LivekitTranscriptionMessage
 {
-    uid:String,
-    message:Option<String>, //will contain SERVER_READY if ready for streaming
-    segments:Option<Vec<LivekitTranscriptionSegment>>
+    pub uid:String,
+    pub message:Option<String>, //will contain SERVER_READY if ready for streaming
+    pub segments:Option<Vec<LivekitTranscriptionSegment>>
 }
 
 #[derive(PartialEq,Clone)]
@@ -89,11 +89,14 @@ pub enum WhisperClientControl
 
 //url for testing
 //let url = "ws://127.0.0.1:9090";
-pub async fn run_whisper_client(
+pub async fn run_whisper_client<T>(
     url:&str,
     mut whisper_client_control_receiver:watch::Receiver<WhisperClientControl>,
-    mut websocket_message_receiver:mpsc::Receiver<Message>
-) {
+    mut websocket_message_receiver:mpsc::Receiver<Message>,
+    handler_function:T
+)
+    where T:Fn(LivekitTranscriptionMessage)->bool
+{
     loop {
         //Wait for Start command
         match whisper_client_control_receiver.wait_for(|c|{*c==WhisperClientControl::Start}).await{
@@ -107,17 +110,21 @@ pub async fn run_whisper_client(
         let handle=whisper_client_loop(
             url,
             &mut whisper_client_control_receiver,
-            &mut websocket_message_receiver
+            &mut websocket_message_receiver,
+            &handler_function
         );
         tokio::join!(handle);
     }
 }
 
-async fn whisper_client_loop(
+async fn whisper_client_loop<T>(
     url:&str,
     whisper_client_control_receiver:&mut watch::Receiver<WhisperClientControl>,
-    websocket_message_receiver:&mut mpsc::Receiver<Message>
-) {
+    websocket_message_receiver:&mut mpsc::Receiver<Message>,
+    handler_function:&T
+)
+    where T:Fn(LivekitTranscriptionMessage)->bool
+{
     let (ws_stream, _response) = match connect_async(url).await
     {
         Ok((ws_stream,_response))=>{(ws_stream,_response)},
@@ -228,44 +235,7 @@ async fn whisper_client_loop(
                                         match serde_json::from_slice::<LivekitTranscriptionMessage>(utf8_bytes.as_bytes())
                                         {
                                             Ok(response)=>{
-                                                match response.message
-                                                {
-                                                    Some(message)=>{
-                                                        println!("Got message: {}",message);
-                                                        match message.as_str()
-                                                        {
-                                                            "SERVER_READY"=>{
-                                                                println!("Whisper is ready.");
-                                                            }
-                                                            _=>()
-                                                        };
-                                                    },
-                                                    None=>{
-                                                        match response.segments
-                                                        {
-                                                            Some(segments)=>{
-                                                                for segment in segments
-                                                                {
-                                                                    let c=match segment.completed
-                                                                    {
-                                                                        true=>"Completed",
-                                                                        false=>"Incomplete"
-                                                                    };
-                                                                    println!("   {}:{}",c,segment.text);
-                                                                    /*
-                                                                    if segment.completed
-                                                                    {
-                                                                        internal_message_transmitter.send(
-                                                                            Message::Close(None)
-                                                                        ).await.expect("Should work...");
-                                                                    }
-                                                                    */
-                                                                }
-                                                            },
-                                                            None=>println!("No message or segments.")
-                                                        }
-                                                    }
-                                                };
+                                                continue_loop=handler_function(response);
                                             },
                                             Err(e)=>{
                                                 eprintln!("{:?}",e);

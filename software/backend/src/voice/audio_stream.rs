@@ -5,7 +5,7 @@ use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
 use tokio::sync::{broadcast::Receiver, mpsc::{self, UnboundedSender}, watch};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{comm::{CommunicationHub, CommunicationSpoke, external_commands::{Command, VoiceControlState}, internal_notifications::InternalServiceNotification}, voice::{livekit_wakeword::run_wakeword_listener, whisper_streaming::{WhisperClientControl, run_whisper_client}}};
+use crate::{InitializationParameters, comm::{CommunicationHub, CommunicationSpoke, external_commands::{Command, VoiceControlState}, internal_notifications::InternalServiceNotification}, voice::{livekit_wakeword::run_wakeword_listener, voice_command::VoiceCommandList, whisper_streaming::{LivekitTranscriptionMessage, WhisperClientControl, run_whisper_client}}};
 
 
 const SAMPLE_RATE:usize=16000;
@@ -20,8 +20,9 @@ pub const CHUNK_BUFFER_MULTIPLE:usize=5;
 const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 
 pub async fn run_voice_command_listener(
-    wakeword_onnx_file:&str,
-    url:&str,
+    //wakeword_onnx_file:&str,
+    //url:&str,
+    params:&InitializationParameters,
     //external_command_sender:UnboundedSender<Command>,
     //mut internal_service_notification_receiver:Receiver<InternalServiceNotification>
     spoke:CommunicationSpoke
@@ -50,8 +51,9 @@ pub async fn run_voice_command_listener(
             if run_voice_command
             {
                 voice_command_listener(
-                    wakeword_onnx_file,
-                    url,
+                    params.wakeword_onnx_file.clone(),
+                    params.whisper_server_url.clone(),
+                    params.config_static_directory.to_string() + "/voice_commands.json",
                     spoke.clone()
                 ).await
             }
@@ -91,8 +93,9 @@ pub async fn run_voice_command_listener(
 }
 
 async fn voice_command_listener(
-    wakeword_onnx_file:&str,
-    url:&str,
+    wakeword_onnx_file:String,
+    url:String,
+    config_file:String,
     spoke:CommunicationSpoke
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
@@ -123,6 +126,18 @@ async fn voice_command_listener(
         }
     }
 
+    let voice_command_list = match std::fs::read_to_string(config_file)
+    {
+        Ok(res)=>{
+            match serde_json::from_str::<VoiceCommandList>(&res)
+            {
+                Ok(vcl) => vcl,
+                Err(e)=>return Err(Box::new(e))
+            }
+        },
+        Err(e)=>return Err(Box::new(e))
+    };
+    
     let stream_config:StreamConfig=StreamConfig { channels: CHANNELS, sample_rate: sample_rate_u32, buffer_size: cpal::BufferSize::Default };
 
     let mut audio_buffer = CircularBuffer::<AUDIO_BUFFER_SIZE,i16>::new();
@@ -267,6 +282,41 @@ async fn voice_command_listener(
         }
     }
 
+    let handler_function = |message:LivekitTranscriptionMessage|{
+        match message.message
+        {
+            Some(message)=>{
+                println!("Got message: {}",message);
+                match message.as_str()
+                {
+                    "SERVER_READY"=>{
+                        println!("Whisper is ready.");
+                    }
+                    _=>()
+                };
+            },
+            None=>()
+        };
+        match message.segments
+        {
+            Some(segments)=>{
+                println!("There are {} segments.",&segments.len());
+                for segment in &segments
+                {
+                    let c=match segment.completed
+                    {
+                        true=>"Completed",
+                        false=>"Incomplete"
+                    };
+                    println!("   {}:{}",c,segment.text);
+                }
+
+                !voice_command_list.check_for_match_and_run_best_match(&segments) //If there is no match (check returns false), continue
+            },
+            None=>true
+        }
+    };
+
     let wakeword_handle=run_wakeword_listener(
         wakeword_onnx_file.to_string(),
         wakeword_chunk_receiver,
@@ -274,9 +324,10 @@ async fn voice_command_listener(
     );
     
     let whisper_handle=run_whisper_client(
-        url,
+        &url,
         whisper_websocket_control_receiver,
-        whisper_websocket_message_receiver
+        whisper_websocket_message_receiver,
+        handler_function
     );
 
     spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));

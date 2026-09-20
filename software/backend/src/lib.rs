@@ -5,23 +5,16 @@ pub(crate) mod voice;
 
 pub mod mqtt;
 
-use std::collections::HashMap;
 use std::
     net::{IpAddr, Ipv4Addr}
 ;
 
-use has_mqtt::component::HomeAssistantDeviceComponent;
-use has_mqtt::device::HomeAssistantDeviceConfiguration;
-use has_mqtt::mqtt_client::{DEFAULT_DISCOVERY_PREFIX, HASMQTTClient};
-use has_mqtt::platform::switch::state::SwitchState;
 use hyper_services::request_processing::Auth;
 use hyper_services::service::certificates::generate_simple_certificates;
 use hyper_services::service::spawn::ConnectionProperties;
 use hyper_services::service::stateful_service::StatefulService;
 
 use crate::comm::CommunicationHub;
-use crate::comm::external_commands::Command;
-use crate::comm::internal_notifications::InternalServiceNotification;
 use crate::mqtt::MQTTConfiguration;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
@@ -127,8 +120,7 @@ pub async fn start_and_run(params:InitializationParameters) {
         let mqtt_client_future = mqtt_client.run();
 
         let voice_command_handle=run_voice_command_listener(
-            &params.wakeword_onnx_file,
-            &params.whisper_server_url,
+            &params,
             spoke
         );
 

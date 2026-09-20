@@ -1,89 +1,160 @@
+use std::thread::current;
+
 use serde::{Deserialize, Serialize};
 
-const CALENDAR:&str = "calendar";
-const PHOTOS:&str = "photos";
-const TASKS:&str = "tasks";
-const CAMERAS:&str = "cameras";
-const TELL_HOME_ASSISTANT:&str = "tell home assistant";
+use crate::voice::whisper_streaming::LivekitTranscriptionSegment;
 
-#[derive(PartialEq,Debug)]
-pub enum VoiceCommand
+
+#[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
+pub enum VoiceCommandMode
 {
-    Calendar,
-    Photos,
-    Tasks,
-    Cameras,
-    TellHomeAssistant(String)
+    Contains(String),
+    Timer
 }
 
-#[derive(Serialize,Deserialize,Debug)]
-pub struct RawVoiceCommand
+#[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
+pub enum VoiceCommandAction
 {
-    command:String,
-    args:Option<String>
+    OpenPage(String)
 }
 
-
-impl <'de> Deserialize<'de> for VoiceCommand
+#[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
+pub struct VoiceCommand
 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de> {
-            match RawVoiceCommand::deserialize(deserializer)
+    mode:VoiceCommandMode,
+    action:Option<VoiceCommandAction>
+}
+
+#[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
+pub struct VoiceCommandList{
+    commands:Vec<VoiceCommand>
+}
+
+impl VoiceCommandList {
+    pub fn check_for_match_and_run_best_match(&self, segments:&Vec<LivekitTranscriptionSegment>)->bool
+    {
+        let mut best_match:Option<(&VoiceCommand,f32)>=None;
+
+        println!("Checking for match of {} possible commands.", self.commands.len());
+
+        for current_command in &self.commands
+        {
+            match current_command.mode.check_for_match(segments)
             {
-                Ok(raw_command) => {
-                    match raw_command.command.as_str()
+                Some(current_score)=>{
+                    match &best_match
                     {
-                        CALENDAR => Ok(VoiceCommand::Calendar),
-                        PHOTOS => Ok(VoiceCommand::Photos),
-                        TASKS => Ok(VoiceCommand::Tasks),
-                        CAMERAS => Ok(VoiceCommand::Cameras),
-                        TELL_HOME_ASSISTANT => {
-                            match raw_command.args
+                        Some((_previous_best_command,previous_best_score))=>{
+                            if current_score>*previous_best_score
                             {
-                                Some(args)=>{
-                                    Ok(VoiceCommand::TellHomeAssistant(args))
-                                },
-                                None=>Err(format!("'{:?}' is not a valid command", raw_command)).map_err(serde::de::Error::custom)
+                                best_match=Some((current_command,current_score));
                             }
                         },
-                        _ => Err(format!("'{:?}' is not a valid command", raw_command)).map_err(serde::de::Error::custom)
+                        None=>{best_match=Some((current_command,current_score));}
                     }
                 },
-                Err(e) => Err(e),
+                None=>()
             }
+        }
+
+        match best_match
+        {
+            Some((best_command,score))=>
+            {
+                println!("Best match with score {}: {:?}",score,best_command);
+                best_command.run();
+                true //Matched, return true
+            },
+            None=>false //No match, return false
+        }
     }
 }
 
-impl Serialize for VoiceCommand
+impl VoiceCommand
 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer {
-
-        let str= match self
+    pub fn run(&self){
+        match &self.mode
         {
-            VoiceCommand::Calendar => CALENDAR,
-            VoiceCommand::Photos => PHOTOS,
-            VoiceCommand::Tasks => TASKS,
-            VoiceCommand::Cameras => CAMERAS,
-            VoiceCommand::TellHomeAssistant(_)=> TELL_HOME_ASSISTANT,
-        };
-
-        let args = match self
-        {
-            VoiceCommand::TellHomeAssistant(message)=> Some(message.to_string()),
-            _ => None
-        };
-
-        let raw_command= RawVoiceCommand{
-            command:str.to_string(),
-            args:args
-        };
-
-        raw_command.serialize(serializer)
+            VoiceCommandMode::Contains(_) => {
+                match &self.action{
+                    Some(action) => action.run(),
+                    None => eprintln!("Not yet implemented."),
+                }
+            },
+            VoiceCommandMode::Timer => eprintln!("Not yet implemented."),
+        }
     }
 }
+
+impl VoiceCommandMode
+{
+    fn check_for_match(&self, segments:&Vec<LivekitTranscriptionSegment>)->Option<f32>
+    {
+        match self
+        {
+            VoiceCommandMode::Contains(match_string) => {
+                let words:Vec<&str>=match_string.split(" ").collect();
+                
+                let tidied_words:Vec<String>=words.iter().map(
+                    |word|{
+                        word.trim().to_lowercase()
+                    }
+                ).collect();
+
+                println!("Tidied words: {:?}",tidied_words);
+
+                let mut scores:Vec<f32>=Vec::new();
+                
+                let mut current_word_index=0;
+
+                for segment in segments
+                {
+                    match &segment.words
+                    {
+                        Some(tswords) => {
+                            for tsword in tswords
+                            {
+                                match tidied_words.get(current_word_index)
+                                {
+                                    Some(current_word) => {
+                                            println!("   current_word: \"{}\"", current_word);
+                                            let tsword_cleaned = tsword.word.to_lowercase().trim().trim_matches(['?','!','.']).to_string();
+                                            println!("   tsword_cleaned: \"{}\"", tsword_cleaned);
+                                            if tsword_cleaned == *current_word
+                                            {
+                                                println!("Match!");
+                                                scores.push(tsword.probability);
+                                                current_word_index+=1;
+                                                if current_word_index==tidied_words.len()
+                                                {
+                                                    //All words found, calculate geometric mean and return!
+                                                    println!("Finished, returning.");
+                                                    return Some(f32::powf(scores.iter().product(),1.0/(scores.len() as f32)));
+                                                }
+                                            }
+                                        }
+                                    None => eprintln!("Shouldn't be reachable. Possible an index error in nearby block."),
+                                };
+                            }
+                        },
+                        None => (),
+                    }
+                }
+            },
+            VoiceCommandMode::Timer => eprintln!("Not yet implemented."),
+        };
+
+        None
+    }
+}
+
+impl VoiceCommandAction
+{
+    fn run(&self){
+
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -91,20 +162,20 @@ mod tests {
 
     #[test]
     fn serialization_and_deserialization() {
-        let test_commands = [
-            VoiceCommand::Calendar,
-            VoiceCommand::Photos,
-            VoiceCommand::Tasks,
-            VoiceCommand::Cameras,
-            VoiceCommand::TellHomeAssistant("clean the whole house".to_string()),
-        ];
+        let test_commands = 
+            VoiceCommandList {
+                commands:[
+                    VoiceCommand {
+                        mode:VoiceCommandMode::Contains("example page".to_string()),
+                        action:Some(VoiceCommandAction::OpenPage("http://www.example.com".to_string()))
+                    }
+                ].to_vec()
+            }
+        ;
         
-        for test_command in test_commands
-        {
-            let serialized = serde_json::to_string_pretty(&test_command).expect("Should serialize.");
-            println!("{}",serialized);
-            let deserialized = serde_json::from_str::<VoiceCommand>(&serialized).expect("Should deserialize.");
-            assert_eq!(test_command,deserialized);
-        }
+        let serialized = serde_json::to_string_pretty(&test_commands).expect("Should serialize.");
+        println!("{}",serialized);
+        let deserialized = serde_json::from_str::<VoiceCommandList>(&serialized).expect("Should deserialize.");
+        assert_eq!(test_commands,deserialized);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "commands": [
+    {
+      "mode": {
+        "Contains": "example page"
+      },
+      "action": {
+        "OpenPage": "http://www.example.com"
+      }
+    }
+  ]
+}
