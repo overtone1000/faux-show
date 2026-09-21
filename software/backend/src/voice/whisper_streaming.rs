@@ -218,7 +218,7 @@ async fn whisper_client_loop<T>(
             }
         }
     ;
-
+  
     let websocket_message_handler=
         async move {
             let mut continue_loop=true;
@@ -238,6 +238,11 @@ async fn whisper_client_loop<T>(
                                                 if!(handler_function(response))
                                                 {
                                                     println!("Need to initiate websocket closure here!")
+
+                                                    //Can't do it this way, doesn't stop streaming to whisper in audio_stream.rs!
+                                                    //whisper_client_control_sender.send(WhisperClientControl::Stop);
+
+                                                    //Probably need another dedicated stream
                                                 }
                                             },
                                             Err(e)=>{

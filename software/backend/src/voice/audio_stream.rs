@@ -148,6 +148,7 @@ async fn voice_command_listener(
     let mut stream_to_whisper = false;
     
     let spoke_clone = spoke.clone();
+
     let data_fn = move |data: &[i16], _: &cpal::InputCallbackInfo| {
 
         let set_whisper_control_mode=|mode:WhisperClientControl|
