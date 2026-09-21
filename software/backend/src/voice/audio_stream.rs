@@ -1,4 +1,4 @@
-use std::time::{Duration, SystemTime};
+use std::{f64::consts::E, time::{Duration, SystemTime}};
 
 use circular_buffer::CircularBuffer;
 use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
@@ -92,6 +92,11 @@ pub async fn run_voice_command_listener(
     }
 }
 
+struct StreamState{
+    stream_enabled:bool,
+    last_detection:Option<SystemTime>
+}
+
 async fn voice_command_listener(
     wakeword_onnx_file:String,
     url:String,
@@ -143,15 +148,19 @@ async fn voice_command_listener(
     let mut audio_buffer = CircularBuffer::<AUDIO_BUFFER_SIZE,i16>::new();
     
     let duration_to_stream_to_whisper_after_detection:Duration = Duration::from_secs(10);
-    let mut last_detection:Option<SystemTime>=None;
-
-    let mut stream_to_whisper = false;
     
-    let spoke_clone = spoke.clone();
-
-    let data_fn = move |data: &[i16], _: &cpal::InputCallbackInfo| {
-
-        let set_whisper_control_mode=|mode:WhisperClientControl|
+    let state = std::sync::Arc::new(tokio::sync::Mutex::new(
+        StreamState{
+            stream_enabled:false,
+            last_detection:None
+        }
+    ));
+    
+    //let mut stream_to_whisper = false;
+    //let mut last_detection:Option<SystemTime>=None;
+    
+    let mut whisper_stream_switch = {
+        let set_whisper_control_mode=move |mode:WhisperClientControl|
         {
             match whisper_websocket_control_transmitter.send(mode.clone())
             {
@@ -162,97 +171,152 @@ async fn voice_command_listener(
             };
         };
 
-        //Move data to buffer
-        audio_buffer.extend_from_slice(data);
+        let spoke_clone = spoke.clone();
+        let state_clone = state.clone();
+        let mut last_detected_wakeword_receiver_clone = last_detected_wakeword_receiver.clone();
 
-        //Send data to livekit-wakeword if enough is buffered
-        while audio_buffer.len()>CHUNK_SIZE
+        move |enabled:bool|
         {
-            let mut chunk:Box<[i16;CHUNK_SIZE]>=Box::new([0;CHUNK_SIZE]);
-            for n in 0..CHUNK_SIZE
-            {
-                chunk[n]=*audio_buffer.nth_front(n).expect("Should exist");
-            }
-            
-            match wakeword_chunk_transmitter.blocking_send(chunk)
-            {
-                Ok(())=>{
-                    //println!("Chunk sent");
-                },
-                Err(e)=>{
-                    eprintln!("chunk send error {:?}",e);
-                }
-            }
-
-            audio_buffer.truncate_front(audio_buffer.len()-AUDIO_STEP_SIZE);
-        }
-
-        //Check if wakeword detection message has changed
-        match last_detected_wakeword_receiver.has_changed()
-        {
-            Ok(has_changed) => {
-                //If it's changed, update the local copy of the value and start streaming.
-                if has_changed
-                {
-                    last_detection=last_detected_wakeword_receiver.borrow_and_update().clone();
-                    
-                    set_whisper_control_mode(WhisperClientControl::Start);
-                    stream_to_whisper=true;
-                    spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
-                    println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
-                }
-            },
-            Err(err) => {
-                eprintln!("{:?}", err);
-            }
-        }
-
-        //If stream flag is true, send data to whisper
-        if stream_to_whisper
-        {
-            let mut raw_bytes:Vec<u8>=Vec::with_capacity(data.len()*2);
-            for datum in data
-            {
-                //Convert to float for whisper
-                //This works!!
-                {
-                    let asfloat=if *datum < 0 {
-                        *datum as f32 / 32768.0 //max for i16
-                    } else {
-                        *datum as f32 / 32767.0 //min for i16
-                    };
-                    
-                    raw_bytes.extend(&asfloat.to_le_bytes());
-                }
-            }
-
-            match whisper_websocket_message_transmitter.blocking_send(Message::binary(hyper::body::Bytes::from_iter(raw_bytes)))
-            {
-                Ok(_)=>(),
-                Err(e)=>{eprintln!("{:?}",e);}
-            }
+            let mut state = state_clone.lock().await; 
+            //Need to use async but this function can't be async! Need to spawn?
+            //Or, better to use more communication channels to accomplish this with a watch and notifiers?
             
 
-            //Determine whether duration of whisper stream has lapsed
-            match last_detection
+            if enabled
             {
-                Some(some_last_detection)=>{
-                    
-                    let comptime = match some_last_detection.checked_add(duration_to_stream_to_whisper_after_detection) {
-                        Some(comptime)=>comptime,
-                        None=>SystemTime::UNIX_EPOCH
-                    };
+                state.last_detection=last_detected_wakeword_receiver_clone.borrow_and_update().clone();
+                state.stream_enabled=true;
+                set_whisper_control_mode(WhisperClientControl::Start);
+                spoke_clone.clone().send_external_command(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
+                println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
+            }
+            else
+            {
+                println!("Stopping stream to whisper.");
+                state.last_detection=None;
+                state.stream_enabled=false;
+                set_whisper_control_mode(WhisperClientControl::Stop);
+                spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
+            }
+        }
+    };
 
-                    if SystemTime::now()>comptime
+
+    let data_fn = {
+        let mut whisper_stream_switch_clone = whisper_stream_switch.clone();
+        
+        move |data: &[i16], _: &cpal::InputCallbackInfo| {
+
+            /*
+            let set_whisper_control_mode=|mode:WhisperClientControl|
+            {
+                match whisper_websocket_control_transmitter.send(mode.clone())
+                {
+                    Ok(())=>(),
+                    Err(e)=>{
+                        eprintln!("{:?}",e);
+                    }
+                };
+            };
+            */
+
+            //Move data to buffer
+            audio_buffer.extend_from_slice(data);
+
+            //Send data to livekit-wakeword if enough is buffered
+            while audio_buffer.len()>CHUNK_SIZE
+            {
+                let mut chunk:Box<[i16;CHUNK_SIZE]>=Box::new([0;CHUNK_SIZE]);
+                for n in 0..CHUNK_SIZE
+                {
+                    chunk[n]=*audio_buffer.nth_front(n).expect("Should exist");
+                }
+                
+                match wakeword_chunk_transmitter.blocking_send(chunk)
+                {
+                    Ok(())=>{
+                        //println!("Chunk sent");
+                    },
+                    Err(e)=>{
+                        eprintln!("chunk send error {:?}",e);
+                    }
+                }
+
+                audio_buffer.truncate_front(audio_buffer.len()-AUDIO_STEP_SIZE);
+            }
+
+            //Check if wakeword detection message has changed
+            match last_detected_wakeword_receiver.has_changed()
+            {
+                Ok(has_changed) => {
+                    //If it's changed, update the local copy of the value and start streaming.
+                    if has_changed
                     {
-                        println!("Stopping stream to whisper.");
-                        set_whisper_control_mode(WhisperClientControl::Stop);
-                        stream_to_whisper=false;
-                        spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
-                        last_detection=None;
+                        /*
+                        last_detection=last_detected_wakeword_receiver.borrow_and_update().clone();
+                        set_whisper_control_mode(WhisperClientControl::Start);
+                        stream_to_whisper=true;
+                        spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
+                        println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
+                        */
+                        whisper_stream_switch_clone(true);
                     }
                 },
-                None=>()
+                Err(err) => {
+                    eprintln!("{:?}", err);
+                }
+            }
+
+            let state=&mut state.blocking_lock();
+            if state.stream_enabled
+            {
+                let mut raw_bytes:Vec<u8>=Vec::with_capacity(data.len()*2);
+                for datum in data
+                {
+                    //Convert to float for whisper
+                    //This works!!
+                    {
+                        let asfloat=if *datum < 0 {
+                            *datum as f32 / 32768.0 //max for i16
+                        } else {
+                            *datum as f32 / 32767.0 //min for i16
+                        };
+                        
+                        raw_bytes.extend(&asfloat.to_le_bytes());
+                    }
+                }
+
+                match whisper_websocket_message_transmitter.blocking_send(Message::binary(hyper::body::Bytes::from_iter(raw_bytes)))
+                {
+                    Ok(_)=>(),
+                    Err(e)=>{eprintln!("{:?}",e);}
+                }
+                
+
+                //Determine whether duration of whisper stream has lapsed
+                match state.last_detection
+                {
+                    Some(some_last_detection)=>{
+                        
+                        let comptime = match some_last_detection.checked_add(duration_to_stream_to_whisper_after_detection) {
+                            Some(comptime)=>comptime,
+                            None=>SystemTime::UNIX_EPOCH
+                        };
+
+                        if SystemTime::now()>comptime
+                        {
+                            /*
+                            println!("Stopping stream to whisper.");
+                            set_whisper_control_mode(WhisperClientControl::Stop);
+                            stream_to_whisper=false;
+                            spoke_clone.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
+                            last_detection=None;
+                            */
+                            whisper_stream_switch_clone(false);
+                        }
+                    },
+                    None=>()
+                }
             }
         }
     };
@@ -283,38 +347,46 @@ async fn voice_command_listener(
         }
     }
 
-    let handler_function = |message:LivekitTranscriptionMessage|{
-        match message.message
-        {
-            Some(message)=>{
-                println!("Got message: {}",message);
-                match message.as_str()
-                {
-                    "SERVER_READY"=>{
-                        println!("Whisper is ready.");
-                    }
-                    _=>()
-                };
-            },
-            None=>()
-        };
-        match message.segments
-        {
-            Some(segments)=>{
-                println!("There are {} segments.",&segments.len());
-                for segment in &segments
-                {
-                    let c=match segment.completed
+    let handler_function = {        
+            |message:LivekitTranscriptionMessage|{
+            match message.message
+            {
+                Some(message)=>{
+                    println!("Got message: {}",message);
+                    match message.as_str()
                     {
-                        true=>"Completed",
-                        false=>"Incomplete"
+                        "SERVER_READY"=>{
+                            println!("Whisper is ready.");
+                        }
+                        _=>()
                     };
-                    println!("   {}:{}",c,segment.text);
-                }
+                },
+                None=>()
+            };
 
-                !voice_command_list.check_for_match_and_run_best_match(&segments, &spoke) //If there is no match (check returns false), continue
-            },
-            None=>true
+            match message.segments
+            {
+                Some(segments)=>{
+                    println!("There are {} segments.",&segments.len());
+                    for segment in &segments
+                    {
+                        let c=match segment.completed
+                        {
+                            true=>"Completed",
+                            false=>"Incomplete"
+                        };
+                        println!("   {}:{}",c,segment.text);
+                    }
+
+                    let finished=voice_command_list.check_for_match_and_run_best_match(&segments, &spoke);
+                    if finished
+                    {
+                        //If there is a match (check returns false), stop the whisper stream
+                        whisper_stream_switch(false);
+                    }
+                },
+                None=>()
+            }
         }
     };
 

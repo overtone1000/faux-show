@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use serde::{Deserialize, Serialize};
-use tokio::{net::TcpStream, sync::{mpsc, watch}};
+use tokio::{net::TcpStream, sync::{mpsc, oneshot, watch}};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 #[derive(Serialize,Debug)]
@@ -93,9 +93,9 @@ pub async fn run_whisper_client<T>(
     url:&str,
     mut whisper_client_control_receiver:watch::Receiver<WhisperClientControl>,
     mut websocket_message_receiver:mpsc::Receiver<Message>,
-    handler_function:T
+    mut handler_function:T
 )
-    where T:Fn(LivekitTranscriptionMessage)->bool
+    where T:FnMut(LivekitTranscriptionMessage)->()
 {
     loop {
         //Wait for Start command
@@ -111,7 +111,7 @@ pub async fn run_whisper_client<T>(
             url,
             &mut whisper_client_control_receiver,
             &mut websocket_message_receiver,
-            &handler_function
+            &mut handler_function
         );
         tokio::join!(handle);
     }
@@ -121,9 +121,9 @@ async fn whisper_client_loop<T>(
     url:&str,
     whisper_client_control_receiver:&mut watch::Receiver<WhisperClientControl>,
     websocket_message_receiver:&mut mpsc::Receiver<Message>,
-    handler_function:&T
+    handler_function:&mut T
 )
-    where T:Fn(LivekitTranscriptionMessage)->bool
+    where T:FnMut(LivekitTranscriptionMessage)->()
 {
     let (ws_stream, _response) = match connect_async(url).await
     {
@@ -133,6 +133,7 @@ async fn whisper_client_loop<T>(
             return;
         }
     };
+
     println!("WebSocket handshake has been successfully completed");
 
     let (mut write, mut read) = ws_stream.split();
@@ -235,15 +236,7 @@ async fn whisper_client_loop<T>(
                                         match serde_json::from_slice::<LivekitTranscriptionMessage>(utf8_bytes.as_bytes())
                                         {
                                             Ok(response)=>{
-                                                if!(handler_function(response))
-                                                {
-                                                    println!("Need to initiate websocket closure here!")
-
-                                                    //Can't do it this way, doesn't stop streaming to whisper in audio_stream.rs!
-                                                    //whisper_client_control_sender.send(WhisperClientControl::Stop);
-
-                                                    //Probably need another dedicated stream
-                                                }
+                                                handler_function(response)
                                             },
                                             Err(e)=>{
                                                 eprintln!("{:?}",e);

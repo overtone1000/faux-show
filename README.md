@@ -39,4 +39,4 @@ ssh into device and
                 - [x] Quick contains: just a word or phrase that has to be in the transcriptiuon
             - Should have configurable actions
                 - [x] Open a specific page
-    - [x] Close whisper socket faster. Search for "println!("Need to initiate websocket closure here!")" to find the right place
+    - [ ] Close whisper socket faster. Search for "println!("Need to initiate websocket closure here!")" to find the right place
