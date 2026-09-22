@@ -205,7 +205,8 @@ async fn voice_command_listener(
         let start_whisper=move||{
             start_streaming(&voice_control_state_sender_clone_1, &mut last_detected_wakeword_receiver_clone);
             spoke_clone_1.clone().send_external_command(Command::SetVoiceControlState(VoiceControlState::StreamingToWhisper));
-            println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
+            //println!("Might want to send data in circular buffer here. Depends on how long the delay is on detection.");
+            //Probably not
         };
 
         let stop_whisper=move || {
@@ -220,6 +221,7 @@ async fn voice_command_listener(
         let mut start_whisper_clone=start_whisper.clone();        
         let stop_whisper_clone = stop_whisper.clone();     
         let mut voice_control_state_receiver_clone = voice_control_state_receiver.clone();
+        let mut last_detected_wakeword_receiver_clone = last_detected_wakeword_receiver.clone();
 
         move |data: &[i16], _: &cpal::InputCallbackInfo| {
 
@@ -262,12 +264,14 @@ async fn voice_command_listener(
             }
 
             //Check if wakeword detection message has changed
-            match last_detected_wakeword_receiver.has_changed()
+            match last_detected_wakeword_receiver_clone.has_changed()
             {
                 Ok(has_changed) => {
+                    last_detected_wakeword_receiver_clone.mark_unchanged();
                     //If it's changed, update the local copy of the value and start streaming.
                     if has_changed
                     {
+                        println!("Wakeword detection changed. Starting whisper.");
                         /*
                         last_detection=last_detected_wakeword_receiver.borrow_and_update().clone();
                         set_whisper_control_mode(WhisperClientControl::Start);
