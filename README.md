@@ -39,7 +39,7 @@ ssh into device and
                 - [x] Quick contains: just a word or phrase that has to be in the transcriptiuon
             - Should have configurable actions
                 - [x] Open a specific page
-    - [ ] Close whisper socket faster. Search for "println!("Need to initiate websocket closure here!")" to find the right place
+    - [x] Close whisper socket faster. Search for "println!("Need to initiate websocket closure here!")" to find the right place
         - Not working.
             - After enabled, voice control state is set repeatedly.
             - Socket still isn't closing down...
