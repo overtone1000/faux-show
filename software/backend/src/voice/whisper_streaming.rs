@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use tokio::{net::TcpStream, sync::{mpsc, oneshot, watch}};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
+use crate::voice::audio_stream::WakewordWhisperState;
+
 #[derive(Serialize,Debug)]
 struct LivekitConfig
 {
@@ -80,18 +82,11 @@ pub struct LivekitTranscriptionMessage
     pub segments:Option<Vec<LivekitTranscriptionSegment>>
 }
 
-#[derive(PartialEq,Clone)]
-pub enum WhisperClientControl
-{
-    Start,
-    Stop
-}
-
 //url for testing
 //let url = "ws://127.0.0.1:9090";
 pub async fn run_whisper_client<T>(
     url:&str,
-    mut whisper_client_control_receiver:watch::Receiver<WhisperClientControl>,
+    mut whisper_client_control_receiver:watch::Receiver<WakewordWhisperState>,
     mut websocket_message_receiver:mpsc::Receiver<Message>,
     mut handler_function:T
 )
@@ -99,7 +94,7 @@ pub async fn run_whisper_client<T>(
 {
     loop {
         //Wait for Start command
-        match whisper_client_control_receiver.wait_for(|c|{*c==WhisperClientControl::Start}).await{
+        match whisper_client_control_receiver.wait_for(|c|{c.whisper_stream_enabled}).await{
             Ok(_)=>(),
             Err(e)=>{
                 eprintln!("{:?}",e);
@@ -119,7 +114,7 @@ pub async fn run_whisper_client<T>(
 
 async fn whisper_client_loop<T>(
     url:&str,
-    whisper_client_control_receiver:&mut watch::Receiver<WhisperClientControl>,
+    whisper_client_control_receiver:&mut watch::Receiver<WakewordWhisperState>,
     websocket_message_receiver:&mut mpsc::Receiver<Message>,
     handler_function:&mut T
 )
@@ -201,7 +196,7 @@ async fn whisper_client_loop<T>(
                     Some(message)=websocket_message_receiver.recv()=>{
                         send_message(&mut write, message).await
                     },
-                    result=whisper_client_control_receiver.wait_for(|c|{*c==WhisperClientControl::Stop})=>{
+                    result=whisper_client_control_receiver.wait_for(|c|{!c.whisper_stream_enabled})=>{
                         //If whisper_client_control_receiver receives a stop signal, exit the loop
                         match result
                         {
