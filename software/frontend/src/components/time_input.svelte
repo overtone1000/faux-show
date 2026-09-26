@@ -4,11 +4,11 @@
 
     export type ModifyTimerState =
     {
-        new_timer:NewTimerState
+        new_timer_input:NewTimerState
     };
 
     let {
-        new_timer=$bindable()
+        new_timer_input: new_timer=$bindable()
     }:ModifyTimerState = $props();
 </script>
 

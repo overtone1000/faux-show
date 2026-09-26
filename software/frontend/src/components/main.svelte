@@ -3,13 +3,14 @@
     import { mdiRefresh } from '@mdi/js';
     import { mdiRobot } from '@mdi/js';
     import IconTab, { type TabProps } from './icon_tab.svelte';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import Time from './time.svelte';
-	import TimerPage, { type Timer, type TimerState as TimerState } from './timer_page.svelte';
 	import { VoiceControlState, type AutoTabEntry, type Command, type AutoTab } from '$lib/commands';
 	import Slideshow from './slideshow.svelte';
 	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
+	import TimerPage from './timer_page.svelte';
+	import type { Timer, TimerState } from '$lib/timer';
   
     //Hook console;
     enum ConsoleType {
@@ -82,7 +83,7 @@
     let main:Main|undefined = $state(undefined);
     let display_on:boolean = $state(true);
 
-    const timers:Timer[] = $state([]);
+    //const timers:Timer[] = $state([]);
 
     let tabs:TabProps[]|undefined = $state(undefined);
     
@@ -103,7 +104,7 @@
         },
         icon_label: "clock",
         icon_path: mdiClock,
-        disabled: true //Not ready yet
+        disabled: false
     };
 
     const slideshow:TabProps = {
@@ -345,6 +346,44 @@
         }
     }
 
+    // Timer State
+    
+    const timer_storage_key="timers";
+    let time=$state(new Date());
+    let update_id:number|undefined=undefined;
+    function update()
+    {
+        time=new Date();
+        update_id=setTimeout(update,100);
+    }
+    let timer_state:TimerState|undefined = $state(undefined); //need to start undefined for initialization from localStorage in effect below
+    function timer_onMount(){
+        let timer_state_json = localStorage.getItem(timer_storage_key);
+        if(timer_state_json)
+        {
+            timer_state=JSON.parse(timer_state_json);
+            console.debug("Retrieved timer state.",JSON.stringify(timer_state));
+        }
+        update();
+    }
+
+    function timer_onDestroy(){
+        clearTimeout(update_id);
+    }
+
+    $effect(
+        ()=>{
+            if(timer_state!==undefined)
+            {
+                localStorage.setItem(timer_storage_key,JSON.stringify(timer_state));   
+                //CANNOT USE DEBUG OR ERROR in effects because of the overload, causes this effect to run repeatedly!!
+                console.info("Saved timer state.",JSON.stringify(timer_state),localStorage.getItem(timer_storage_key));
+            }
+        }
+    );
+
+    //
+
     let socket_url:undefined|string = undefined;
     onMount(()=>{
         //development mode flag
@@ -352,8 +391,12 @@
         
         open_socket();
         get_tabs();
+        timer_onMount();
     });
 
+    onDestroy(()=>{
+        timer_onDestroy();
+    });
 </script>
 
 <div class="whole_display">
@@ -401,7 +444,7 @@
                     </iframe>
                 {:else if main.field === MainField.component && main.component_meta !== undefined}
                     {#if main.component_meta === ComponentType.clock}
-                        <TimerPage timers={timers}/>
+                        <TimerPage time={time} bind:timer_state={timer_state}/>
                     {:else if main.component_meta === ComponentType.slideshow}
                         <Slideshow photoprism_key={photoprism_key}/>
                     {/if}

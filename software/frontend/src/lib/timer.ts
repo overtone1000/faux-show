@@ -1,31 +1,60 @@
-export type NewTimerState =
+import { format_time_remaining } from "./time";
+
+export type Timer =
 {
-    hours_tens:number,
-    hours_ones:number,
-    minutes_tens:number,
-    minutes_ones:number,
-    seconds_tens:number,
-    seconds_ones:number
+    //end:Date //Don't use date because it is hard to serialize.
+    millis:number //This is either milliseconds left (if paused) or milliseconds in epoch when timer is finished
+    paused:boolean
 };
 
-export const get_empty_timer = ()=>{
-    const retval:NewTimerState={
-        hours_tens:0,
-        hours_ones:0,
-        minutes_tens:0,
-        minutes_ones:0,
-        seconds_tens:0,
-        seconds_ones:0
-    };
-    return retval;
+export type TimerState =
+{
+    timers:Timer[]
 };
 
-export function new_timer_to_end(new_timer:NewTimerState)
+export function get_timer_end_millis(timer:Timer)
 {
-    const hours = new_timer.hours_tens*10 + new_timer.hours_ones;
-    const minutes = new_timer.minutes_tens*10+new_timer.minutes_ones;
-    const seconds = new_timer.seconds_tens*10+new_timer.seconds_ones;
-    const total_millis = ((hours*60+minutes)*60+seconds)*1000;
+    if(timer.paused)
+    {
+        return Date.now()+timer.millis;
+    }
+    else
+    {
+        return timer.millis;
+    }
+}
 
-    return new Date(new Date().getTime()+total_millis);
+export function get_timer_end_date(timer:Timer)
+{
+    return new Date(get_timer_end_millis(timer));
+}
+
+export function pause_timer(timer:Timer)
+{
+    if(!timer.paused)
+    {
+        timer.paused=true;
+        timer.millis=timer.millis-Date.now();
+    }
+}
+
+export function resume_timer(timer:Timer)
+{
+    if(timer.paused)
+    {
+        timer.paused=false;
+        timer.millis=timer.millis+Date.now();
+    }
+}
+
+export function timer_expired(timer:Timer)
+{
+    if(timer.paused)
+    {
+        return timer.millis<=0;
+    }
+    else
+    {
+        return Date.now()>=timer.millis;
+    }
 }
