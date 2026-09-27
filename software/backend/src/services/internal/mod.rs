@@ -31,6 +31,7 @@ pub struct InternalService {
     sinks:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,
     sink_handler:Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     photoprism_key:String,
+    has_key:String,
     //header_map:Option<HeaderMap>
 }
 
@@ -55,6 +56,7 @@ impl InternalService
             sinks:Arc::new(Mutex::new(HashMap::new())),
             sink_handler:Arc::new(Mutex::new(None)),
             photoprism_key:initialization_parameters.photoprism_key.to_string(),
+            has_key:initialization_parameters.has_key.to_string()
             //header_map:Some(header_map)
         }
     }
@@ -137,22 +139,44 @@ impl InternalService
 
     async fn sink_initialization(&self, sink:&mut SplitSink<WebSocketStream<TokioIo<Upgraded>>, Message>)->(){
         println!("Sink initializing.");
+
         self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(true));
-        match serde_json::to_string(&Command::PhotoprismKey(self.photoprism_key.clone()))
-        {
-            Ok(key)=>{
-                match sink.send(Message::Text(Utf8Bytes::from(key))).await
-                {
-                    Ok(_)=>(),
-                    Err(e)=>{
-                        eprintln!("{:?}",e);
+
+        { 
+            match serde_json::to_string(&Command::PhotoprismKey(self.photoprism_key.clone()))
+            {
+                Ok(key)=>{
+                    match sink.send(Message::Text(Utf8Bytes::from(key))).await
+                    {
+                        Ok(_)=>(),
+                        Err(e)=>{
+                            eprintln!("{:?}",e);
+                        }
                     }
+                },
+                Err(e)=>{
+                    eprintln!("{:?}",e);
                 }
-            },
-            Err(e)=>{
-                eprintln!("{:?}",e);
-            }
-        };
+            };
+        }
+
+        {
+            match serde_json::to_string(&Command::HASKey(self.has_key.clone()))
+            {
+                Ok(key)=>{
+                    match sink.send(Message::Text(Utf8Bytes::from(key))).await
+                    {
+                        Ok(_)=>(),
+                        Err(e)=>{
+                            eprintln!("{:?}",e);
+                        }
+                    }
+                },
+                Err(e)=>{
+                    eprintln!("{:?}",e);
+                }
+            };
+        }
     }
 
     fn sink_destruction(&self)->(){

@@ -19,6 +19,7 @@ export enum VoiceControlState
 export type Command = {
     AutoTab?:AutoTab,
     PhotoprismKey?:string,
+    HASKey?:string,
     SetScreenState?:boolean,
     SetVoiceControlState?:VoiceControlState
 }

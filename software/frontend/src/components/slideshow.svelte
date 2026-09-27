@@ -15,6 +15,7 @@
 
     let props:SlideshowProps = $props();
 
+    console.warn("Need to make these configurable via environment variables.");
     const BASE="https://photos.overdesigned.org/api/v1";
     const ALBUM_UID="atbl6hj66z1i4hxf";
    

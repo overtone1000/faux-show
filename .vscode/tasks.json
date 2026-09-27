@@ -52,7 +52,8 @@
                     "DEVICE_NAME":"Test Faux Show",
                     "DEVICE_ID":"test_faux_show",
                     "KIOSK_USER_ID":"2000",
-                    "PHOTOPRISM_KEY":"${input:getSecret}",
+                    "PHOTOPRISM_KEY":"${input:photoprism_key}",
+                    "HAS_KEY":"${input:has_key}",
                     "WHISPER_SERVER":"ws://127.0.0.1:9090",
                     "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx",
                 }
@@ -75,7 +76,8 @@
                     "DEVICE_NAME":"Test Faux Show",
                     "DEVICE_ID":"test_faux_show",
                     "KIOSK_USER_ID":"2000",
-                    "PHOTOPRISM_KEY":"${input:getSecret}",
+                    "PHOTOPRISM_KEY":"${input:photoprism_key}",
+                    "HAS_KEY":"${input:has_key}",
                     "WHISPER_SERVER":"ws://127.0.0.1:9090",
                     "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx",
                 }
@@ -93,8 +95,14 @@
     ],
     "inputs":[
         {
-            "id":"getSecret",
+            "id":"photoprism_key",
             "description":"Enter photoprism key",
+            "type":"promptString",
+            "password":false
+        },
+        {
+            "id":"has_key",
+            "description":"Enter HAS key",
             "type":"promptString",
             "password":false
         }

@@ -52,7 +52,10 @@ impl ExternalService {
             },
             Command::PhotoprismKey(_)=>{
                 eprintln!("Invalid command.");
-            }
+            },
+            Command::HASKey(_)=>{
+                eprintln!("Invalid command.");
+            },
             Command::SetVoiceControlState(_) => {
                 eprintln!("Invalid command.");
             },

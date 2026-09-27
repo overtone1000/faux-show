@@ -14,5 +14,4 @@ target
 **/mutants.out*/
 
 .direnv
-secrets.md
 .env

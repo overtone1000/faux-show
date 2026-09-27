@@ -227,6 +227,7 @@
     }
 
     let photoprism_key=$state<string|undefined>(undefined);
+    let has_key=$state<string|undefined>(undefined);
     let voice_control_state=$state<VoiceControlState>(VoiceControlState.NotEnabled);
     function handle_server_command(command:Command)
     {
@@ -258,6 +259,13 @@
         {
             console.debug("Received photoprism key.");
             photoprism_key=command.PhotoprismKey;
+        }
+
+        if(command.HASKey)
+        {
+            console.debug("HAS key received.");
+            has_key=command.HASKey;
+            speak("Hey, it's working!");
         }
         
         if(command.SetScreenState!==undefined)
@@ -346,8 +354,40 @@
         }
     }
 
+    // TTS
+    function speak(text:string)
+    {
+        console.warn("Need to make this and some of the JSON below configurable via environment variables.");
+        const BASE="http://10.10.10.10:8123/api/services/tts/";
+
+        if(has_key)
+        {
+            fetch(
+                BASE,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + has_key,
+                        //"Origin": window.location.origin
+                    },
+                    body: JSON.stringify(
+                        {
+                            entity_id:"tts.piper",
+                            media_player_entity_id:"media_player.kitchen_pair",
+                            message:text
+                        }
+                    )
+                }
+            ).then(
+                ((resp)=>{
+                    console.debug("Speak result:",resp);
+                })
+            )
+        }
+    }
+
     // Timer State
-    
     const timer_storage_key="timers";
     let time=$state(new Date());
     let update_id:number|undefined=undefined;

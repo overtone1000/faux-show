@@ -31,6 +31,7 @@ pub struct InitializationParameters
     kiosk_uid:u64,
     mqtt_config:MQTTConfiguration,
     photoprism_key:String,
+    has_key:String,
     whisper_server_url:String,
     wakeword_onnx_file:String
 }
@@ -46,6 +47,7 @@ impl InitializationParameters
         kiosk_uid:u64,
         mqtt_config:MQTTConfiguration,
         photoprism_key:String,
+        has_key:String,
         whisper_server_url:String,
         wakeword_onnx_file:String
     )->InitializationParameters
@@ -59,6 +61,7 @@ impl InitializationParameters
             kiosk_uid,
             mqtt_config,
             photoprism_key,
+            has_key,
             whisper_server_url,
             wakeword_onnx_file
         }

@@ -43,3 +43,4 @@ ssh into device and
         - Not working.
             - After enabled, voice control state is set repeatedly.
             - Socket still isn't closing down...
+- [ ] Make photoprism URL, photoprism album, and HAS URL into environment variables (can just bundle in existing PhotoprismKey and HASKey commands)
