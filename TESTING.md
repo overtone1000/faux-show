@@ -56,3 +56,14 @@ MESSAGE={\"SetScreenState\":true} #Test screenstate
 
 curl --insecure --user "$USER:$PASSWORD" -X POST -H "Content-Type: application/json" -d "message=$MESSAGE" $URL
 ```
+
+## TTS
+
+# Get services json
+curl -X "GET" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --output ./testing/test.json $URL/api/services
+
+# TTS using cloud_say
+curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"Hello there"}' $URL/api/services/tts/cloud_say
+
+# TTS using picoTTS
+curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"tts.pico_tts_en_us","media_player_entity_id":"media_player.kitchen_2_2","message":"The timer is done."}' $URL/api/services/tts/speak
