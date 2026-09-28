@@ -265,7 +265,7 @@
         {
             console.debug("HAS key received.");
             has_key=command.HASKey;
-            speak("Hey, it's working!");
+            //speak("Hey, TTS is working!");
         }
         
         if(command.SetScreenState!==undefined)
