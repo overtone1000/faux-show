@@ -350,7 +350,7 @@
                 build_tabs(result);
             }
         } catch (error:any) {
-            console.error(error.message);
+            console.error("Tab retrieval failed.",error.message);
         }
     }
 
@@ -358,7 +358,7 @@
     function speak(text:string)
     {
         console.warn("Need to make this and some of the JSON below configurable via environment variables.");
-        const BASE="http://10.10.10.10:8123/api/services/tts/";
+        const BASE="http://10.10.10.10:8123/api/services/tts/speak";
 
         if(has_key)
         {
@@ -366,7 +366,7 @@
                 BASE,
                 {
                     method: "POST",
-                    mode: "no-cors",
+                    //mode: "no-cors",
                     headers: {
                         "Content-Type": "application/json",
                         "Authorization": "Bearer " + has_key,
@@ -374,8 +374,8 @@
                     },
                     body: JSON.stringify(
                         {
-                            entity_id:"tts.piper",
-                            media_player_entity_id:"media_player.kitchen_pair",
+                            entity_id:"tts.pico_tts_en_us",
+                            media_player_entity_id:"media_player.kitchen_2_2",
                             message:text
                         }
                     )
