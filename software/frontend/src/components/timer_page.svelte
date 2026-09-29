@@ -3,7 +3,7 @@
 	import IconButton from "./icon_button.svelte";
 	import TimeInput from "./time_input.svelte";
 	import { format_time_remaining } from "$lib/time";
-	import { get_timer_end_date, pause_timer, resume_timer, type Timer, type TimerState } from "$lib/timer";
+	import { get_timer_end_date, pause_timer, resume_timer, timer_expired, type Timer, type TimerState } from "$lib/timer";
 	import { get_empty_timer, timer_input_to_running_timer, type TimerInput } from "$lib/timer_input";
 
     type Props =
@@ -11,7 +11,54 @@
         time:Date,
         timer_state:TimerState|undefined
     };
+
     let {time, timer_state=$bindable()}:Props = $props();
+
+    type TimerExtendedState={
+        expired:boolean,
+        end_date:Date,
+        formatted_remaining_time:string,
+        display_class:string
+    };
+
+    let timer_extended_states:TimerExtendedState[]=$derived.by(
+        ()=>{
+            if(timer_state)
+            {
+                return timer_state.timers.map(
+                    (timer,index)=>{
+
+                        const expired = timer_expired(timer);
+                        const end_date = get_timer_end_date(timer);
+
+                        let formatted_remaining_time:string;
+                        let display_class:string;
+                        if(expired)
+                        {
+                            formatted_remaining_time="00:00:00";
+                            display_class="timer_entry expired";
+                        }
+                        else
+                        {
+                            formatted_remaining_time = format_time_remaining(time,end_date);
+                            display_class="timer_entry";
+                        }
+                        
+                        return {
+                            expired,
+                            end_date,
+                            formatted_remaining_time,
+                            display_class
+                        };
+                    }
+                );
+            }
+            else
+            {
+                return [];
+            }
+        }
+    );
 
 
     function add_timer()
@@ -24,7 +71,17 @@
     function save_timer()
     {
         console.debug("Saving timer.");
-        const new_running_timer = timer_input_to_running_timer(new_timer_input);
+        let number_of_timers:number;
+        if(timer_state)
+        {   
+            number_of_timers=timer_state.timers.length;
+        }
+        else
+        {
+            number_of_timers=0;   
+        }
+        const name = "Timer " + (number_of_timers+1);
+        const new_running_timer = timer_input_to_running_timer(name, new_timer_input);
         
         if(timer_state)
         {
@@ -71,10 +128,16 @@
                     </thead>
                     <tbody>
                     {#each timer_state.timers as timer, index}
-                        <tr class="timer_entry">
-                            <td>{format_time_remaining(time,get_timer_end_date(timer))}</td>
-                            {#if timer.paused}
-                                <td>
+                        <tr class={timer_extended_states[index].display_class}>
+                            <td>
+                                {timer.name}
+                            </td>
+                            <td>
+                                {timer_extended_states[index].formatted_remaining_time}
+                            </td>
+                            <td>
+                            {#if !timer_extended_states[index].expired}
+                                {#if timer.paused}
                                     <div class="icon_container">
                                         <IconButton
                                             path={mdiPlay}
@@ -82,9 +145,7 @@
                                             action={()=>{resume_timer(timer);}} 
                                         />
                                     </div>
-                                </td>
-                            {:else}
-                                <td>
+                                {:else}
                                     <div class="icon_container">
                                         <IconButton
                                             path={mdiPause}
@@ -92,8 +153,9 @@
                                             action={()=>{pause_timer(timer);}} 
                                         />
                                     </div>
-                                </td>
+                                {/if}
                             {/if}
+                            </td>
                             <td>
                                 <div class="icon_container">
                                     <IconButton
@@ -144,8 +206,21 @@
     }
     .timer_entry
     {
-        height: 10px;
-        font-size: 50px;
+        height: 40mm;
+        font-size: 15mm;
+    }
+    .timer_entry.expired
+    {
+        background-color: rgb(77, 2, 2);
+        animation: bg_oscillation 1s infinite alternate ease-in-out
+    }
+    @keyframes bg_oscillation{
+        0% {
+            background-color:  rgb(77, 2, 2);
+        }
+        100% {
+            background-color: #3f2003;
+        } 
     }
     td {
         border-left: none;
@@ -155,7 +230,7 @@
     {
         display: flex;
         flex-direction: column;
-        height: 16mm;
+        height: 20mm;
     }
     .spacer
     {

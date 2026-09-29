@@ -3,7 +3,8 @@ import { format_time_remaining } from "./time";
 export type Timer =
 {
     //end:Date //Don't use date because it is hard to serialize.
-    millis:number //This is either milliseconds left (if paused) or milliseconds in epoch when timer is finished
+    name:string,
+    millis:number, //This is either milliseconds left (if paused) or milliseconds in epoch when timer is finished
     paused:boolean
 };
 

@@ -453,24 +453,24 @@
         <div class="spacer"></div>
         {#if voice_control_state===VoiceControlState.NotEnabled}
             <div class="infotab">
-                <IconSvg path={mdiEarHearing} stroke="gray"/>
+                <IconSvg path={mdiEarHearing} color="gray"/>
             </div>
         {:else if voice_control_state===VoiceControlState.ListeningForWakeword}
             <div class="infotab">
-                <IconSvg path={mdiEarHearing} stroke="yellow"/>
+                <IconSvg path={mdiEarHearing} color="yellow"/>
             </div>
         {:else if voice_control_state===VoiceControlState.StreamingToWhisper}
             <div class="infotab">
-                <IconSvg path={mdiEarHearing} stroke="green"/>
+                <IconSvg path={mdiEarHearing} color="green"/>
             </div>
         {/if}
         {#if socket_state}
             <div class="infotab">
-                <IconSvg path={mdiCircleOutline} stroke="green"/>
+                <IconSvg path={mdiCircleOutline} color="green"/>
             </div>
         {:else}
             <div class="infotab">
-                <IconSvg path={mdiCircleOffOutline} stroke="red"/>
+                <IconSvg path={mdiCircleOffOutline} color="red"/>
             </div>
         {/if}
         <IconTab props={debug}/>

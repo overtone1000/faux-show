@@ -38,9 +38,4 @@
         border-width: 2px;
         margin-right: var(--right_margin, "0px");
     }
-    .iconsvg{
-        fill:none;
-        stroke:black;
-        stroke-width:1px;
-    }
 </style>

@@ -20,7 +20,7 @@ export const get_empty_timer = ()=>{
     return retval;
 };
 
-export function timer_input_to_running_timer(new_timer:TimerInput)
+export function timer_input_to_running_timer(name:string,new_timer:TimerInput)
 {
     const hours = new_timer.hours_tens*10 + new_timer.hours_ones;
     const minutes = new_timer.minutes_tens*10+new_timer.minutes_ones;
@@ -28,6 +28,7 @@ export function timer_input_to_running_timer(new_timer:TimerInput)
     const total_millis = ((hours*60+minutes)*60+seconds)*1000;
 
     return {
+        name,
         millis:Date.now()+total_millis,
         paused:false
     };

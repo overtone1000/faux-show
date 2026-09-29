@@ -1,27 +1,24 @@
 <script lang="ts">
     type Props = {
         path:string,
-        stroke?:string,
-        stroke_width?:number
+        color?:string,
     };
     let { 
         path,
-        stroke="black",
-        stroke_width=1
+        color="black",
     }:Props = $props();
 </script>
 
 <svg viewBox="0 0 24 24">
     <path 
         class="iconsvg" 
-        style:stroke={stroke}
-        style:stroke_width={stroke_width}
+        style:fill={color}
         d={path}
     />
 </svg>
 
 <style>
     .iconsvg{
-        fill:none;
+        stroke-width:0px;
     }
 </style>
