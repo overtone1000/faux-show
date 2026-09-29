@@ -395,7 +395,7 @@
     function update()
     {
         time=new Date();
-        update_id=setTimeout(update,100);
+        update_id=setTimeout(update,1000);
     }
     let timer_state:TimerState|undefined = $state(undefined); //need to start undefined for initialization from localStorage in effect below
     function timer_onMount(){

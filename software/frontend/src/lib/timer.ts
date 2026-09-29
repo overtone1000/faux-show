@@ -34,7 +34,7 @@ export function pause_timer(timer:Timer)
     if(!timer.paused)
     {
         timer.paused=true;
-        timer.millis=timer.millis-Date.now();
+        timer.millis=timer.millis-Date.now(); //Set millis to the time remaining.
     }
 }
 
@@ -43,7 +43,7 @@ export function resume_timer(timer:Timer)
     if(timer.paused)
     {
         timer.paused=false;
-        timer.millis=timer.millis+Date.now();
+        timer.millis=timer.millis+Date.now(); //Set millis to the epoch millis when it will be done.
     }
 }
 

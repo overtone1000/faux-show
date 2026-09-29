@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { mdiCheck, mdiDelete, mdiPlus } from "@mdi/js";
+	import { mdiCheck, mdiDelete, mdiPlus, mdiPause, mdiPlay } from "@mdi/js";
 	import IconButton from "./icon_button.svelte";
 	import TimeInput from "./time_input.svelte";
 	import { format_time_remaining } from "$lib/time";
-	import { get_timer_end_date, type Timer, type TimerState } from "$lib/timer";
+	import { get_timer_end_date, pause_timer, resume_timer, type Timer, type TimerState } from "$lib/timer";
 	import { get_empty_timer, timer_input_to_running_timer, type TimerInput } from "$lib/timer_input";
 
     type Props =
@@ -63,15 +63,53 @@
             </div>
         </div>
     {:else}
-        <div class="spacer"></div>
-        {#if timer_state}
-            {#each timer_state.timers as timer}
-                <div>
-                    {format_time_remaining(time,get_timer_end_date(timer))}
-                </div>
-                <div class="spacer"></div>
-            {/each}
-        {/if}
+        <div class="table_container">
+            {#if timer_state}
+                <table class="timertable">
+                    <thead>
+                        
+                    </thead>
+                    <tbody>
+                    {#each timer_state.timers as timer, index}
+                        <tr class="timer_entry">
+                            <td>{format_time_remaining(time,get_timer_end_date(timer))}</td>
+                            {#if timer.paused}
+                                <td>
+                                    <div class="icon_container">
+                                        <IconButton
+                                            path={mdiPlay}
+                                            label={"resume_timer"}
+                                            action={()=>{resume_timer(timer);}} 
+                                        />
+                                    </div>
+                                </td>
+                            {:else}
+                                <td>
+                                    <div class="icon_container">
+                                        <IconButton
+                                            path={mdiPause}
+                                            label={"pause_timer"}
+                                            action={()=>{pause_timer(timer);}} 
+                                        />
+                                    </div>
+                                </td>
+                            {/if}
+                            <td>
+                                <div class="icon_container">
+                                    <IconButton
+                                        path={mdiDelete}
+                                        label={"discard_timer"}
+                                        action={()=>{timer_state.timers.splice(index,1)}} 
+                                    />
+                                </div>
+                            </td>
+                        </tr>
+                    {/each}
+                    </tbody>
+                </table>
+            {/if}
+            <div class="spacer"></div>
+        </div>
         <div class="icon_container">
             <IconButton 
                 path={mdiPlus}
@@ -91,6 +129,27 @@
         width: 100%;
         justify-content: space-between;
         align-items: center;
+    }
+    .table_container
+    {
+        width: 100%;
+        height: 100%;
+        overflow: scroll;
+    }
+    .timertable
+    {
+        margin: 0;
+        width:100%;
+        flex-shrink: 1;
+    }
+    .timer_entry
+    {
+        height: 10px;
+        font-size: 50px;
+    }
+    td {
+        border-left: none;
+        border-right: none;
     }
     .icon_container
     {

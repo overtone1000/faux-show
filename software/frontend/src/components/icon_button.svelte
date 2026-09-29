@@ -41,6 +41,6 @@
     .iconsvg{
         fill:none;
         stroke:black;
-        stroke-width:1;
+        stroke-width:1px;
     }
 </style>
