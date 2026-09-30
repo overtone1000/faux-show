@@ -1,4 +1,5 @@
 import { format_time_remaining } from "./time";
+import type { TimerExtendedState } from "./timer_ext";
 
 export type Timer =
 {
@@ -8,16 +9,11 @@ export type Timer =
     paused:boolean
 };
 
-export type TimerState =
-{
-    timers:Timer[]
-};
-
-export function get_timer_end_millis(timer:Timer)
+export function get_timer_end_millis(current_epoch_millis:number, timer:Timer)
 {
     if(timer.paused)
     {
-        return Date.now()+timer.millis;
+        return current_epoch_millis+timer.millis;
     }
     else
     {
@@ -25,9 +21,9 @@ export function get_timer_end_millis(timer:Timer)
     }
 }
 
-export function get_timer_end_date(timer:Timer)
+export function get_timer_end_date(current_epoch_millis:number, timer:Timer)
 {
-    return new Date(get_timer_end_millis(timer));
+    return new Date(get_timer_end_millis(current_epoch_millis, timer));
 }
 
 export function pause_timer(timer:Timer)
@@ -48,7 +44,7 @@ export function resume_timer(timer:Timer)
     }
 }
 
-export function timer_expired(timer:Timer)
+export function timer_expired(current_epoch_millis:number, timer:Timer)
 {
     if(timer.paused)
     {
@@ -56,6 +52,6 @@ export function timer_expired(timer:Timer)
     }
     else
     {
-        return Date.now()>=timer.millis;
+        return current_epoch_millis>=timer.millis;
     }
 }

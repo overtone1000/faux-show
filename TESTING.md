@@ -73,6 +73,6 @@ curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application
 
 curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"Want to hear a joke?"}' $URL/api/services/tts/cloud_say
 
-curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"Why do computers always tell the funniest jokes?"}' $URL/api/services/tts/cloud_say
+curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"What did the computer eat for lunch?"}' $URL/api/services/tts/cloud_say
 
-curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"They are good with bits"}' $URL/api/services/tts/cloud_say
+curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"It just had a quick bite."}' $URL/api/services/tts/cloud_say

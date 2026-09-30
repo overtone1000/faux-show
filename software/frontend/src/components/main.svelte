@@ -10,8 +10,8 @@
 	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
 	import TimerPage from './timer_page.svelte';
-	import type { Timer, TimerState } from '$lib/timer';
-  
+	import { all_timers_from_serial, all_timers_to_serial, update_extended_states, type AllTimers } from '$lib/timer_ext';
+	  
     //Hook console;
     enum ConsoleType {
         Debug,
@@ -358,7 +358,10 @@
     function speak(text:string)
     {
         console.warn("Need to make this and some of the JSON below configurable via environment variables.");
-        const BASE="http://10.10.10.10:8123/api/services/tts/speak";
+        //For pico tts
+        //const BASE="http://10.10.10.10:8123/api/services/tts/speak";
+        //For cloud say
+        const BASE="http://10.10.10.10:8123/api/services/tts/cloud_say";
 
         if(has_key)
         {
@@ -372,10 +375,20 @@
                         "Authorization": "Bearer " + has_key,
                         //"Origin": window.location.origin
                     },
+                    //For picoTTS
+                    /*
                     body: JSON.stringify(
                         {
                             entity_id:"tts.pico_tts_en_us",
                             media_player_entity_id:"media_player.kitchen_2_2",
+                            message:text
+                        }
+                    )
+                    */
+                    //For cloud say
+                    body: JSON.stringify(
+                        {
+                            entity_id:"media_player.kitchen_2_2",
                             message:text
                         }
                     )
@@ -391,35 +404,118 @@
     // Timer State
     const timer_storage_key="timers";
     let time=$state(new Date());
-    let update_id:number|undefined=undefined;
-    function update()
+    let update_time_id:number|undefined=undefined;
+    function update_time()
     {
         time=new Date();
-        update_id=setTimeout(update,1000);
+        update_time_id=setTimeout(update_time,1000);
     }
-    let timer_state:TimerState|undefined = $state(undefined); //need to start undefined for initialization from localStorage in effect below
+
+    let update_announcement_id:number|undefined=undefined;
+    function timer_finished_announcement()
+    {
+        console.debug("Callback running.");
+
+        let expired_names:string[] = [];
+        for(const full_timer of timers)
+        {
+            if(full_timer.state.expired)                
+            {
+                expired_names.push(full_timer.timer.name)
+            }
+        }
+
+        console.debug("Expired names",expired_names);
+
+        if(expired_names.length>0)
+        {
+            if(expired_names.length>1)
+            {
+                let speech="";
+                for(let n=0;n<expired_names.length-1;n++)
+                {
+                    speech=speech+expired_names[n] + ", ";
+                }
+                speech=speech+ " and " + expired_names[expired_names.length-1] + " are done.";
+                speak(speech);
+            }
+            else
+            {
+                speak(expired_names[0] + " is done.");
+            }
+        
+            update_announcement_id=setTimeout(timer_finished_announcement, 10000);
+        }
+        else
+        {
+            clearTimeout(update_announcement_id);
+        }
+    }
+
+    let timers:AllTimers = $state([]); //need to start undefined for initialization from localStorage in effect below
+    let timers_initialized:boolean=false;
+
     function timer_onMount(){
         let timer_state_json = localStorage.getItem(timer_storage_key);
         if(timer_state_json)
         {
-            timer_state=JSON.parse(timer_state_json);
-            console.debug("Retrieved timer state.",JSON.stringify(timer_state));
+            console.debug("Loading timers from storage.",timer_state_json);
+            timers=all_timers_from_serial(timer_state_json);
+            timers_initialized=true;
         }
-        update();
+        update_time();
     }
 
     function timer_onDestroy(){
-        clearTimeout(update_id);
+        clearTimeout(update_time_id);
+        clearTimeout(update_announcement_id);
     }
 
     $effect(
         ()=>{
-            if(timer_state!==undefined)
+            console.info("Updating extended states.");
+            update_extended_states(time, timers);
+            //setTimeout(timer_finished_announcement);
+        }
+    );
+
+    $effect(
+        ()=>{
+            //If update announcement isn't running, check if any timers are expired and restart.
+            if(!update_announcement_id)
             {
-                localStorage.setItem(timer_storage_key,JSON.stringify(timer_state));   
-                //CANNOT USE DEBUG OR ERROR in effects because of the overload, causes this effect to run repeatedly!!
-                console.info("Saved timer state.",JSON.stringify(timer_state),localStorage.getItem(timer_storage_key));
+                for(const full_timer of timers)
+                {
+                    if(full_timer.state.expired)                
+                    {
+                        console.info("Expired timer found, calling callback.");
+                        setTimeout(timer_finished_announcement);
+                        break;
+                    }
+                }   
             }
+        }
+    )
+
+    const save_timers = () =>
+    {
+        if(timers_initialized)
+        {
+            //CANNOT USE DEBUG OR ERROR in effects because of the overload, causes this effect to run repeatedly!!
+            const serial=all_timers_to_serial(timers);
+            console.info("Saving timers to storage.",serial)
+            localStorage.setItem(timer_storage_key,serial);
+        }
+        else
+        {
+            console.info("Skipping timer save because not mounted.");
+        }
+    }
+
+    $effect(
+        ()=>{
+            //Save timers when changed at this level (could happen by voice command)
+            save_timers()
         }
     );
 
@@ -485,7 +581,7 @@
                     </iframe>
                 {:else if main.field === MainField.component && main.component_meta !== undefined}
                     {#if main.component_meta === ComponentType.clock}
-                        <TimerPage time={time} bind:timer_state={timer_state}/>
+                        <TimerPage bind:timers save_timers={save_timers}/>
                     {:else if main.component_meta === ComponentType.slideshow}
                         <Slideshow photoprism_key={photoprism_key}/>
                     {/if}
