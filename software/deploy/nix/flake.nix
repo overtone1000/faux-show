@@ -1,8 +1,9 @@
+#https://crane.dev/examples/cross-rust-overlay.html
 {
   description = "Cross compiling a rust program using rust-overlay";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-26.05";
 
     crane.url = "github:ipetkov/crane";
 
@@ -43,6 +44,12 @@
           strictDeps = true;
           pname = "faux-show-backend"; #Name of the package of interest
           version = "0.3.0"; #Package version
+          nativeBuildInputs = [
+            pkgs.pkg-config #Needed for build input alsa
+          ];
+          buildInputs = [
+            pkgs.alsa-lib #Needed for audio components (voice control)
+          ];
         };
 
         deps_expression =

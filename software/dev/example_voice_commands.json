@@ -7,6 +7,14 @@
       "action": {
         "OpenPage": "http://www.example.com"
       }
+    },
+    {
+      "mode": {
+        "Contains": "stop"
+      },
+      "action": {
+        "AcknowledgeAlarms": true
+      }
     }
   ]
 }

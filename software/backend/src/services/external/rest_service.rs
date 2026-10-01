@@ -59,6 +59,9 @@ impl ExternalService {
             Command::SetVoiceControlState(_) => {
                 eprintln!("Invalid command.");
             },
+            Command::AcknowledgeAlarms(_) => {
+                eprintln!("Invalid command.");
+            },
         }
 
         Ok(())

@@ -78,7 +78,8 @@ pub enum Command
     PhotoprismKey(String), //Give photoprism key to frontend
     HASKey(String), //Give has key to frontend
     SetScreenState(bool), //Tell frontend to render a simple display
-    SetVoiceControlState(VoiceControlState) //Tell frontend voice control state
+    SetVoiceControlState(VoiceControlState), //Tell frontend voice control state,
+    AcknowledgeAlarms(bool), //Acknowledge alarms
 }
 
 #[cfg(test)]

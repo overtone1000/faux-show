@@ -21,5 +21,6 @@ export type Command = {
     PhotoprismKey?:string,
     HASKey?:string,
     SetScreenState?:boolean,
-    SetVoiceControlState?:VoiceControlState
+    SetVoiceControlState?:VoiceControlState,
+    AcknowledgeAlarms?:boolean
 }

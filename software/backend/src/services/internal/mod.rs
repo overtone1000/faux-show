@@ -102,7 +102,7 @@ impl InternalService
         }
     }
 
-    async fn handle_websocket_stream(mut stream:SplitStream<WebSocketStream<TokioIo<Upgraded>>>)->()
+    async fn handle_websocket_stream(stream:&mut SplitStream<WebSocketStream<TokioIo<Upgraded>>>)->()
     {
         println!("Starting websocket stream handler.");
         
@@ -194,7 +194,7 @@ impl InternalService
             },
         };
 
-        let (mut sink,stream) =websocketstream.split();
+        let (mut sink,mut stream) =websocketstream.split();
 
         //Send initialization on sink
         self.sink_initialization(&mut sink).await;
@@ -227,7 +227,7 @@ impl InternalService
 
        match tokio::spawn(
         async move {
-            Self::handle_websocket_stream(stream).await
+            Self::handle_websocket_stream(&mut stream).await
         }).await
        {
             Ok(_)=>(),

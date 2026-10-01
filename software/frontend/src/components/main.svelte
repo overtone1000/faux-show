@@ -277,6 +277,20 @@
         {
             voice_control_state=command.SetVoiceControlState as VoiceControlState;
         }
+
+        if(command.AcknowledgeAlarms)
+        {
+            let timers_to_preserve=[];
+            for(const timer of timers)
+            {
+                if(!timer.state.expired)
+                {
+                    timers_to_preserve.push(timer);
+                }
+            }
+            timers=timers_to_preserve;
+            save_timers();
+        }
     }
 
     let socket:WebSocket|undefined=undefined;
@@ -547,20 +561,20 @@
         <div class="spacer"></div>
         <Time/>
         <div class="spacer"></div>
-        {#if voice_control_state===VoiceControlState.NotEnabled}
+        {#if socket_state}
+            {#if voice_control_state===VoiceControlState.NotEnabled}
             <div class="infotab">
                 <IconSvg path={mdiEarHearing} color="gray"/>
             </div>
-        {:else if voice_control_state===VoiceControlState.ListeningForWakeword}
-            <div class="infotab">
-                <IconSvg path={mdiEarHearing} color="yellow"/>
-            </div>
-        {:else if voice_control_state===VoiceControlState.StreamingToWhisper}
-            <div class="infotab">
-                <IconSvg path={mdiEarHearing} color="green"/>
-            </div>
-        {/if}
-        {#if socket_state}
+            {:else if voice_control_state===VoiceControlState.ListeningForWakeword}
+                <div class="infotab">
+                    <IconSvg path={mdiEarHearing} color="yellow"/>
+                </div>
+            {:else if voice_control_state===VoiceControlState.StreamingToWhisper}
+                <div class="infotab">
+                    <IconSvg path={mdiEarHearing} color="green"/>
+                </div>
+            {/if}
             <div class="infotab">
                 <IconSvg path={mdiCircleOutline} color="green"/>
             </div>

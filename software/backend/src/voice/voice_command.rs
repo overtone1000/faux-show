@@ -15,7 +15,8 @@ pub enum VoiceCommandMode
 #[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
 pub enum VoiceCommandAction
 {
-    OpenPage(String)
+    OpenPage(String),
+    AcknowledgeAlarms(bool)
 }
 
 #[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
@@ -166,6 +167,11 @@ impl VoiceCommandAction
                             timeout_seconds:5*60
                         }                        
                     )
+                );
+            },
+            VoiceCommandAction::AcknowledgeAlarms(ack) => {
+                spoke.send_external_command(
+                    Command::AcknowledgeAlarms(*ack)
                 );
             },
         }
