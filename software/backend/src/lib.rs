@@ -131,6 +131,7 @@ pub async fn start_and_run(params:InitializationParameters) {
 
         println!("Services created.");
 
+        /*
         match tokio::try_join!(
             hub_future,
             internal_service_future,
@@ -145,5 +146,20 @@ pub async fn start_and_run(params:InitializationParameters) {
                 println!("{}", e.to_string());
             }
         }
+        */
+
+        let result=tokio::select! {
+            result=hub_future=>{eprintln!("Hub service ended."); result},
+            result=internal_service_future=>{eprintln!("Internal service ended."); result},
+            result=external_service_future=>{eprintln!("External service ended."); result},
+            result=mqtt_client_future=>{eprintln!("MQTT service ended."); result},
+            result=voice_command_handle=>{eprintln!("Voice service ended."); result},
+        };
+
+        match result
+        {
+            Ok(())=>{println!("Ended gracefully.")}
+            Err(e)=>{eprintln!("{:?}",e)}
+        };
     }
 }

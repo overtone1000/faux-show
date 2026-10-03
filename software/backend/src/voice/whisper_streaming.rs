@@ -94,12 +94,14 @@ pub async fn run_whisper_client<T>(
 {
     loop {
         //Wait for Start command
+        println!("Waiting for whisper client start signal.");
         match whisper_client_control_receiver.wait_for(|c|{c.whisper_stream_enabled}).await{
             Ok(_)=>(),
             Err(e)=>{
                 eprintln!("{:?}",e);
             }
         };
+        println!("Starting whisper client.");
 
         //Start loop
         let handle=whisper_client_loop(
@@ -108,7 +110,9 @@ pub async fn run_whisper_client<T>(
             &mut websocket_message_receiver,
             &mut handler_function
         );
+        
         tokio::join!(handle);
+        println!("Whisper client finished.");
     }
 }
 
@@ -191,13 +195,22 @@ async fn whisper_client_loop<T>(
                     None => (),
                 }
                 */
+
+                let control_closure = |c: &WakewordWhisperState|
+                {
+                    println!("State change: {:?}",c);
+                    let retval = !c.whisper_stream_enabled;
+                    println!("Returning {}",retval);
+                    retval
+                };
                 
                 tokio::select! {
                     Some(message)=websocket_message_receiver.recv()=>{
                         send_message(&mut write, message).await
                     },
-                    result=whisper_client_control_receiver.wait_for(|c|{!c.whisper_stream_enabled})=>{
+                    result=whisper_client_control_receiver.wait_for(control_closure)=>{
                         //If whisper_client_control_receiver receives a stop signal, exit the loop
+                        println!("Whisper stream disable signal received.");
                         match result
                         {
                             Ok(_) => (),
@@ -209,9 +222,10 @@ async fn whisper_client_loop<T>(
                             Ok(_)=>{println!("Whisper stream closed.");},
                             Err(e)=>{eprintln!("{:?}",e);}
                         };
-                    }
+                    },
                 };
             }
+            println!("Whisper websocket message sender closed.");
         }
     ;
   

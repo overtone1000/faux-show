@@ -180,7 +180,7 @@ impl InternalService
     }
 
     fn sink_destruction(&self)->(){
-        self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(false));
+        //self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(false));
     }
 
     async fn handle_websocket(self, websocket: HyperWebsocket) -> () {       
@@ -230,36 +230,40 @@ impl InternalService
             Self::handle_websocket_stream(&mut stream).await
         }).await
        {
-            Ok(_)=>(),
+            Ok(_)=>println!("Websocket closed."),
             Err(e) => {
                 eprintln!("Websocket error: {:?}",e);
                 return;
             },
        }
 
-       println!("Closed websocket. Cleaning up.");
+       println!("Closed websocket. Cleaning up sinks.");
 
        //Remove the sink from the sink vec
        {
             let mut sinks = self.sinks.lock().await;
             let mut current_handler = self.sink_handler.lock().await;
 
+            println!("Removing sink.");            
             sinks.remove(&sink_key);
 
             if sinks.len()<=0
             {
+                //If there are no more sinks, stop the sink handler
                 match &*current_handler
                 {
                     Some(handler) => handler.abort(),
                     None => ()
-                }
+                };
+
+                
+                self.sink_destruction();
             }
 
             *current_handler=None
         }
 
-       //If there are no more sinks, stop the sink handler
-        self.sink_destruction();
+        println!("Finished.");            
     }
 }
 
@@ -269,7 +273,7 @@ impl StatefulHandler for InternalService {
             true=>{
                 let (response, websocket) = hyper_tungstenite::upgrade(request, None)?;
             
-                println!("Received websocket request. Response is {:?}", response);
+                println!("Internal service received websocket request. Response is {:?}", response);
                 // Spawn a task to handle the websocket connection.
                 tokio::spawn(async move {
                     self.handle_websocket(websocket).await
@@ -281,6 +285,7 @@ impl StatefulHandler for InternalService {
                 Ok(boxed_response)
             },
             false=>{
+                println!("Internal service received non-websocket request.");
                 let (parts, incoming) = request.into_parts();
                         
                 match parts.method {

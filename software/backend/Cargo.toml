@@ -16,14 +16,14 @@ serde = "^1"
 serde_json = "^1"
 
 #This imports the modules directly and is better for rapid development of the library
-#hyper-services = { path = "../../../trm-rust-libs/hyper-services" } #Can't do this, because then can't build with nix.
-#websocket = { path = "../../../trm-rust-libs/websocket" } #Can't do this, because then can't build with nix.
-#has-mqtt = { path = "../../../trm-rust-libs/has-mqtt" } #Can't do this, because then can't build with nix.
+hyper-services = { path = "../../../trm-rust-libs/hyper-services" } #Can't do this, because then can't build with nix.
+websocket = { path = "../../../trm-rust-libs/websocket" } #Can't do this, because then can't build with nix.
+has-mqtt = { path = "../../../trm-rust-libs/has-mqtt" } #Can't do this, because then can't build with nix.
 
 # This allows for building with nix. Instead, set dependency to the git repo locally as below.
-hyper-services = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
-websocket = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
-has-mqtt = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
+#hyper-services = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
+#websocket = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
+#has-mqtt = { git = "file:///home/tyler/repos/trm-rust-libs" } #This works. But, just need to not specify hyper-services, have to specifically target the repo root
 
 #Whisper streaming and livekit wakeword
 cpal = "^0" #Get microphone input

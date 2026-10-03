@@ -701,7 +701,6 @@ dependencies = [
 [[package]]
 name = "has-mqtt"
 version = "0.1.0"
-source = "git+file:///home/tyler/repos/trm-rust-libs#2dc92301347a0fa06ac02dfb705f64b03450b670"
 dependencies = [
  "bytes",
  "rumqttc",
@@ -821,9 +820,8 @@ dependencies = [
 [[package]]
 name = "hyper-services"
 version = "0.1.1"
-source = "git+file:///home/tyler/repos/trm-rust-libs#2dc92301347a0fa06ac02dfb705f64b03450b670"
 dependencies = [
- "base64 0.23.1",
+ "base64 0.22.1",
  "futures-util",
  "http-body-util",
  "hyper",
@@ -831,6 +829,7 @@ dependencies = [
  "hyper-util",
  "rcgen",
  "rustls",
+ "rustls-pki-types",
  "serde",
  "serde_json",
  "tokio",
@@ -2797,7 +2796,6 @@ dependencies = [
 [[package]]
 name = "websocket"
 version = "0.1.0"
-source = "git+file:///home/tyler/repos/trm-rust-libs#2dc92301347a0fa06ac02dfb705f64b03450b670"
 dependencies = [
  "futures-util",
  "hyper-tungstenite",
