@@ -16,11 +16,33 @@ export enum VoiceControlState
     StreamingToWhisper
 }
 
+export type VoiceControlModeContains =
+{
+    Contains:string
+}
+
+export type VoiceControlActionOpenPage = 
+{
+    OpenPage:string
+}
+
+export type VoiceControlActionAcknowledgeAlarms = 
+{
+    AcknowledgeAlarms:string
+}
+
+export type VoiceControlOptions =
+{
+    mode:VoiceControlModeContains,
+    action:VoiceControlActionOpenPage|VoiceControlActionAcknowledgeAlarms
+}[]
+
 export type Command = {
     AutoTab?:AutoTab,
     PhotoprismKey?:string,
     HASKey?:string,
     SetScreenState?:boolean,
     SetVoiceControlState?:VoiceControlState,
-    AcknowledgeAlarms?:boolean
+    AcknowledgeAlarms?:boolean,
+    VoiceControlOptions?:VoiceControlOptions
 }

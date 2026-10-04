@@ -80,6 +80,7 @@ pub enum Command
     SetScreenState(bool), //Tell frontend to render a simple display
     SetVoiceControlState(VoiceControlState), //Tell frontend voice control state,
     AcknowledgeAlarms(bool), //Acknowledge alarms
+    VoiceControlOptions(VoiceControlOptions)
 }
 
 #[cfg(test)]
