@@ -250,14 +250,14 @@ async fn voice_command_listener(
             //Send data to livekit-wakeword if enough is buffered
             while audio_buffer.len()>CHUNK_SIZE
             {
-                println!("audio_stream.rs: data_function: Audio buffer still running.");
+                //println!("audio_stream.rs: data_function: Audio buffer still running.");
                 let mut chunk:Box<[i16;CHUNK_SIZE]>=Box::new([0;CHUNK_SIZE]);
                 for n in 0..CHUNK_SIZE
                 {
                     chunk[n]=*audio_buffer.nth_front(n).expect("Should exist");
                 }
                 
-                println!("audio_stream.rs: data_function: Sending chunk");
+                //println!("audio_stream.rs: data_function: Sending chunk");
                 match wakeword_chunk_transmitter.blocking_send(chunk)
                 {
                     Ok(())=>{
@@ -302,7 +302,7 @@ async fn voice_command_listener(
             //Isn't failing here.
             if state.whisper_stream_enabled
             {
-                println!("audio_stream.rs: data_function: Whisper stream still running.");
+                //println!("audio_stream.rs: data_function: Whisper stream still running.");
                 let mut raw_bytes:Vec<u8>=Vec::with_capacity(data.len()*2);
                 for datum in data
                 {
@@ -319,10 +319,10 @@ async fn voice_command_listener(
                     }
                 }
 
-                println!("audio_stream.rs: data_function: Sending to whisper websocket.");
+                //println!("audio_stream.rs: data_function: Sending to whisper websocket.");
                 match whisper_websocket_message_transmitter_clone.blocking_send(Message::binary(hyper::body::Bytes::from_iter(raw_bytes)))
                 {
-                    Ok(_)=>println!("audio_stream.rs: data_function: Sent to whisper websocket."),
+                    Ok(_)=>(),
                     Err(e)=>eprintln!("audio_stream.rs: data_function: {:?}",e)
                 }
                 
@@ -345,7 +345,7 @@ async fn voice_command_listener(
                     None=>()
                 }
 
-                println!("audio_stream.rs: data_function: Whisper segment completed.");
+                //println!("audio_stream.rs: data_function: Whisper segment completed.");
             }
         }
     };
