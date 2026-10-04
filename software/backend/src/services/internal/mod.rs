@@ -62,7 +62,10 @@ impl InternalService
     }
 
     //commands:Arc<Mutex<VecDeque<Command>>>
-    async fn handle_websocket_sink(external_command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>, sink:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,)->()
+    async fn handle_websocket_sink(
+        external_command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
+        sink:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>
+    )->()
     {
         println!("Starting websocket sink handler.");
         let mut external_command_receiver= external_command_receiver.lock().await;
@@ -106,7 +109,9 @@ impl InternalService
     {
         println!("Starting websocket stream handler.");
         
-        loop {
+        let mut continue_stream:bool=true;
+
+        while continue_stream {
             match stream.next().await
             {
                 Some(stream_next)=>{
@@ -119,6 +124,10 @@ impl InternalService
                                 },
                                 Message::Ping(_)=>println!("Ping"),
                                 Message::Pong(_)=>println!("Pong"),
+                                Message::Close(_)=>{
+                                    println!("Stream closing.");
+                                    continue_stream=false;
+                                }
                                 _=>() //Ignore all other message types.
                             }
                         },
@@ -230,9 +239,9 @@ impl InternalService
             Self::handle_websocket_stream(&mut stream).await
         }).await
        {
-            Ok(_)=>println!("Websocket closed."),
+            Ok(_)=>println!("Websocket stream closed."),
             Err(e) => {
-                eprintln!("Websocket error: {:?}",e);
+                eprintln!("Websocket stream error: {:?}",e);
                 return;
             },
        }

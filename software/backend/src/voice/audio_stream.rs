@@ -163,6 +163,7 @@ async fn voice_command_listener(
             voice_control_state_sender:&watch::Sender<WakewordWhisperState>
         )
         {
+            println!("Setting state {:?}",state);
             match voice_control_state_sender.send(state){
                 Ok(())=>(),
                 Err(e)=>eprintln!("{:?}",e)
@@ -213,6 +214,7 @@ async fn voice_command_listener(
 
         let stop_whisper=move || {
             println!("Sending command to stop whisper.");
+            eprintln!("This isn't closing whisper correctly. Perhaps async is stuck somewhere or state isn't being set correctly.");
             spoke_clone_2.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
             stop_streaming(&voice_control_state_sender_clone_2);
         };
@@ -224,7 +226,7 @@ async fn voice_command_listener(
         let stop_whisper_clone = stop_whisper.clone();     
         let mut voice_control_state_receiver_clone = voice_control_state_receiver.clone();
         let mut last_detected_wakeword_receiver_clone = last_detected_wakeword_receiver.clone();
-
+        let whisper_websocket_message_transmitter_clone = whisper_websocket_message_transmitter.clone();
         move |data: &[i16], _: &cpal::InputCallbackInfo| {
 
             /*
@@ -309,7 +311,7 @@ async fn voice_command_listener(
                     }
                 }
 
-                match whisper_websocket_message_transmitter.blocking_send(Message::binary(hyper::body::Bytes::from_iter(raw_bytes)))
+                match whisper_websocket_message_transmitter_clone.blocking_send(Message::binary(hyper::body::Bytes::from_iter(raw_bytes)))
                 {
                     Ok(_)=>(),
                     Err(e)=>{eprintln!("{:?}",e);}
@@ -420,11 +422,17 @@ async fn voice_command_listener(
         &url,
         voice_control_state_receiver,
         whisper_websocket_message_receiver,
+        whisper_websocket_message_transmitter,
         handler_function
     );
 
     spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));
-    tokio::join!(wakeword_handle,whisper_handle);
+
+    tokio::select!{
+        _=wakeword_handle=>{eprintln!("Wakeword loop exit")},
+        _=whisper_handle=>{eprintln!("Whisper loop exit")}
+    }
+    //tokio::join!(wakeword_handle,whisper_handle);
 
     println!("Audio stream joined.");
     spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::NotEnabled));

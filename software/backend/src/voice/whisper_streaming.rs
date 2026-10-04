@@ -88,6 +88,7 @@ pub async fn run_whisper_client<T>(
     url:&str,
     mut whisper_client_control_receiver:watch::Receiver<WakewordWhisperState>,
     mut websocket_message_receiver:mpsc::Receiver<Message>,
+    websocket_message_sender:mpsc::Sender<Message>,
     mut handler_function:T
 )
     where T:FnMut(LivekitTranscriptionMessage)->()
@@ -108,6 +109,7 @@ pub async fn run_whisper_client<T>(
             url,
             &mut whisper_client_control_receiver,
             &mut websocket_message_receiver,
+            &websocket_message_sender,
             &mut handler_function
         );
         
@@ -120,6 +122,7 @@ async fn whisper_client_loop<T>(
     url:&str,
     whisper_client_control_receiver:&mut watch::Receiver<WakewordWhisperState>,
     websocket_message_receiver:&mut mpsc::Receiver<Message>,
+    websocket_message_sender:&mpsc::Sender<Message>,
     handler_function:&mut T
 )
     where T:FnMut(LivekitTranscriptionMessage)->()
@@ -184,47 +187,74 @@ async fn whisper_client_loop<T>(
 
     let websocket_message_sender = 
         async move {
-            let mut continue_loop=true;
-            while continue_loop {
-                /*
-                match websocket_message_receiver.recv().await
-                {
-                    Some(message) => {
-                        send_message(message).await
-                    },
-                    None => (),
+            
+            let send_loop = async move {
+                loop{
+                    match websocket_message_receiver.recv().await
+                    {
+                        Some(message)=>{
+                            send_message(&mut write, message).await
+                        },
+                        None=>()
+                    };
                 }
-                */
+            };
 
-                let control_closure = |c: &WakewordWhisperState|
-                {
-                    println!("State change: {:?}",c);
-                    let retval = !c.whisper_stream_enabled;
-                    println!("Returning {}",retval);
-                    retval
-                };
-                
-                tokio::select! {
-                    Some(message)=websocket_message_receiver.recv()=>{
-                        send_message(&mut write, message).await
-                    },
-                    result=whisper_client_control_receiver.wait_for(control_closure)=>{
-                        //If whisper_client_control_receiver receives a stop signal, exit the loop
-                        println!("Whisper stream disable signal received.");
-                        match result
-                        {
-                            Ok(_) => (),
-                            Err(e) => eprintln!("{:?}",e),
-                        }
-                        continue_loop=false;
-                        match write.close().await
-                        {
-                            Ok(_)=>{println!("Whisper stream closed.");},
-                            Err(e)=>{eprintln!("{:?}",e);}
-                        };
-                    },
-                };
+            /*
+            match websocket_message_receiver.recv().await
+            {
+                Some(message) => {
+                    send_message(message).await
+                },
+                None => (),
             }
+            */
+
+            let control_closure = |c: &WakewordWhisperState|
+            {
+                let retval = !c.whisper_stream_enabled;
+                println!("State change: {:?} - returning {}",c,retval);
+                retval
+            };
+            
+            let close_control_receive = async move {
+                match whisper_client_control_receiver.wait_for(control_closure).await
+                {
+                    Ok(_) => {
+                        websocket_message_sender.blocking_send(Message::Close(None));
+                    },
+                    Err(e) => eprintln!("{:?}",e),
+                }
+            };
+
+            /*
+            tokio::select! {
+                _=send_loop=>(),
+                result=whisper_client_control_receiver.wait_for(control_closure)=>{
+                    //If whisper_client_control_receiver receives a stop signal, exit the loop
+                    println!("Whisper stream disable signal received.");
+                    match result
+                    {
+                        Ok(_) => (),
+                        Err(e) => eprintln!("{:?}",e),
+                    };
+                    websocket_message_sender.blocking_send(Message::Close(None));
+                    /*
+                    match write.close().await
+                    {
+                        Ok(_)=>{println!("Whisper stream closed.");},
+                        Err(e)=>{eprintln!("{:?}",e);}
+                    };
+                    */
+                },
+            };
+            */
+
+            tokio::join!(
+                send_loop,
+                close_control_receive
+            );
+
             println!("Whisper websocket message sender closed.");
         }
     ;
