@@ -5,12 +5,12 @@
     import IconTab, { type TabProps } from './icon_tab.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import Time from './time.svelte';
-	import { VoiceControlState, type AutoTabEntry, type Command, type AutoTab } from '$lib/commands';
+	import { VoiceControlState, type AutoTabEntry, type Command, type AutoTab, type VoiceControlOptions } from '$lib/commands';
 	import Slideshow from './slideshow.svelte';
-	import type { LegacyComponentType } from 'svelte/legacy';
 	import IconSvg from './icon_svg.svelte';
 	import TimerPage from './timer_page.svelte';
 	import { all_timers_from_serial, all_timers_to_serial, update_extended_states, type AllTimers } from '$lib/timer_ext';
+	import IconButton from './icon_button.svelte';
 	  
     //Hook console;
     enum ConsoleType {
@@ -87,14 +87,6 @@
 
     let tabs:TabProps[]|undefined = $state(undefined);
     
-    const refresh:TabProps = {
-        action: () => {
-            location.reload();
-        },
-        icon_label: "refresh",
-        icon_path: mdiRefresh
-    };
-
     const clock:TabProps = {
         action: () => {
             main={
@@ -120,14 +112,7 @@
     };
 
     let show_debug:boolean=$state(false);
-    const debug:TabProps = {
-        action: () => {
-            show_debug=!show_debug;
-        },
-        icon_label: "debug",
-        icon_path: mdiDebugStepInto,
-        disabled: false
-    }
+    let show_voice_instructions:boolean=$state(false);
 
     function set_manual_tab(tab_props:TabProps)
     {
@@ -229,6 +214,7 @@
     let photoprism_key=$state<string|undefined>(undefined);
     let has_key=$state<string|undefined>(undefined);
     let voice_control_state=$state<VoiceControlState>(VoiceControlState.NotEnabled);
+    let voice_control_options=$state<VoiceControlOptions>([]);
     function handle_server_command(command:Command)
     {
         console.debug("Handling command.");
@@ -266,6 +252,12 @@
             console.debug("HAS key received.");
             has_key=command.HASKey;
             //speak("Hey, TTS is working!");
+        }
+
+        if(command.VoiceControlOptions)
+        {
+            console.debug("Voice control options received.");
+            voice_control_options=command.VoiceControlOptions;
         }
         
         if(command.SetScreenState!==undefined)
@@ -548,6 +540,18 @@
     onDestroy(()=>{
         timer_onDestroy();
     });
+
+    let voice_control_icon_color=$derived.by(
+        ()=>{
+            switch(voice_control_state)
+            {
+                case VoiceControlState.NotEnabled:return "gray";
+                case VoiceControlState.ListeningForWakeword:return "yellow";
+                case VoiceControlState.StreamingToWhisper:return "green";
+                default:return "black";
+            }
+        }
+    );
 </script>
 
 <div class="whole_display">
@@ -562,19 +566,9 @@
         <Time/>
         <div class="spacer"></div>
         {#if socket_state}
-            {#if voice_control_state===VoiceControlState.NotEnabled}
             <div class="infotab">
-                <IconSvg path={mdiEarHearing} color="gray"/>
+                <IconButton path={mdiEarHearing} color={voice_control_icon_color} bgcolor="transparent" label="voice_control" action={()=>{show_voice_instructions=!show_voice_instructions}}/>
             </div>
-            {:else if voice_control_state===VoiceControlState.ListeningForWakeword}
-                <div class="infotab">
-                    <IconSvg path={mdiEarHearing} color="yellow"/>
-                </div>
-            {:else if voice_control_state===VoiceControlState.StreamingToWhisper}
-                <div class="infotab">
-                    <IconSvg path={mdiEarHearing} color="green"/>
-                </div>
-            {/if}
             <div class="infotab">
                 <IconSvg path={mdiCircleOutline} color="green"/>
             </div>
@@ -583,8 +577,8 @@
                 <IconSvg path={mdiCircleOffOutline} color="red"/>
             </div>
         {/if}
-        <IconTab props={debug}/>
-        <IconTab props={refresh}/>
+        <IconButton path={mdiDebugStepInto} label="debug" action={()=>{show_debug=!show_debug;}}/>
+        <IconButton path={mdiRefresh} label="refresh" action={()=>{location.reload();}}/>
     </div>
     <div class="main_outer">
         {#if display_on && main !== undefined}
@@ -603,7 +597,7 @@
             </div>
         {/if}
         {#if show_debug}
-            <div class="console">
+            <div class="overlay console">
                 {#each console_history as entry}
                     {#if entry.type===ConsoleType.Debug}
                     <div class="console_entry">
@@ -614,6 +608,12 @@
                         {entry.time.toString() + ": " + entry.args.toString()}
                     </div>
                     {/if}
+                {/each}
+            </div>
+        {:else if show_voice_instructions}
+            <div class="overlay voice_instructions">
+                {#each voice_control_options as voice_option}
+                    Need to explain option!
                 {/each}
             </div>
         {/if}
@@ -671,13 +671,16 @@
         height:100%;
         width:100%;
     }
-    .console
+    .overlay
     {
         grid-area: 1 / 1;
         max-width:100%;
         max-height:100%;
         height:100%;
         width:100%;
+    }
+    .console
+    {
         opacity: 0.75;
         background-color: black;
         color:white;
@@ -690,6 +693,15 @@
     {
         width:100%;
         height:min-content;
+    }
+    .voice_instructions
+    {
+        opacity: 0.75;
+        background-color: #0d0150;
+        color:white;
+        display:flex;
+        flex-direction: column;
+        justify-content: end;
     }
     .error
     {

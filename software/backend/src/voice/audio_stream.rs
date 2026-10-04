@@ -261,7 +261,7 @@ async fn voice_command_listener(
                 match wakeword_chunk_transmitter.blocking_send(chunk)
                 {
                     Ok(())=>{
-                        println!("audio_stream.rs: data_function: Chunk sent");
+                        //println!("audio_stream.rs: data_function: Chunk sent");
                     },
                     Err(e)=>{
                         eprintln!("audio_stream.rs: data_function: chunk send error {:?}",e);

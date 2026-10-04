@@ -12,18 +12,12 @@
     let propscont:TabPropsCont = $props();
 </script>
 
-<div class="tab">
-    <IconButton
-        path={propscont.props.icon_path}
-        label={propscont.props.icon_label}
-        action={propscont.props.action}
-        disabled={propscont.props.disabled}
-    />
-</div>
+<IconButton
+    path={propscont.props.icon_path}
+    label={propscont.props.icon_label}
+    action={propscont.props.action}
+    disabled={propscont.props.disabled}
+/>
 
 <style>
-    .tab
-    {
-        margin-right: 1px
-    }
 </style>
