@@ -67,7 +67,7 @@ impl InternalService
         sink:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>
     )->()
     {
-        println!("Starting websocket sink handler.");
+        println!("internal/mod.rs: Starting websocket sink handler.");
         let mut external_command_receiver= external_command_receiver.lock().await;
 
         loop {
@@ -83,22 +83,22 @@ impl InternalService
                                 match sink.send(Message::text(command_as_string.clone())).await
                                 {
                                     Ok(_)=>{
-                                        println!("Command sent via websocket.");
+                                        println!("internal/mod.rs: Command sent via websocket.");
                                     },
                                     Err(e)=>{
-                                        eprintln!("Websocket send error: {:?}",e);
+                                        eprintln!("internal/mod.rs: Websocket send error: {:?}",e);
                                     }
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!("Couldn't deserialize command. {:?}",e);
+                            eprintln!("internal/mod.rs: Couldn't deserialize command. {:?}",e);
                         },
                     }
                 },
                 None=>{
                     //stream has closed, exit
-                    println!("Command receiver has closed. Closing sink handler.");
+                    println!("internal/mod.rs: Command receiver has closed. Closing sink handler.");
                     return;
                 }
             }
@@ -107,7 +107,7 @@ impl InternalService
 
     async fn handle_websocket_stream(stream:&mut SplitStream<WebSocketStream<TokioIo<Upgraded>>>)->()
     {
-        println!("Starting websocket stream handler.");
+        println!("internal/mod.rs: Starting websocket stream handler.");
         
         let mut continue_stream:bool=true;
 
@@ -120,26 +120,26 @@ impl InternalService
                             match stream_next {
                                 Message::Text(msg) => {
                                     //Don't really do anything with messages from the client yet.
-                                    println!("Received text message: {msg}");
+                                    println!("internal/mod.rs: Received text message: {msg}");
                                 },
-                                Message::Ping(_)=>println!("Ping"),
-                                Message::Pong(_)=>println!("Pong"),
+                                Message::Ping(_)=>println!("internal/mod.rs: Ping"),
+                                Message::Pong(_)=>println!("internal/mod.rs: Pong"),
                                 Message::Close(_)=>{
-                                    println!("Stream closing.");
+                                    println!("internal/mod.rs: Stream closing.");
                                     continue_stream=false;
                                 }
                                 _=>() //Ignore all other message types.
                             }
                         },
                         Err(e) => {
-                            eprintln!("Websocket error: {:?}",e);
+                            eprintln!("internal/mod.rs: Websocket error: {:?}",e);
                             return
                         },
                     }
                 }
                 None=>{
                     //stream is done, exit
-                    println!("Stream has closed. Closing stream handler.");
+                    println!("internal/mod.rs: Stream has closed. Closing stream handler.");
                     return 
                 }
             }            
@@ -147,7 +147,7 @@ impl InternalService
     }
 
     async fn sink_initialization(&self, sink:&mut SplitSink<WebSocketStream<TokioIo<Upgraded>>, Message>)->(){
-        println!("Sink initializing.");
+        println!("internal/mod.rs: Sink initializing.");
 
         self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(true));
 
@@ -159,12 +159,12 @@ impl InternalService
                     {
                         Ok(_)=>(),
                         Err(e)=>{
-                            eprintln!("{:?}",e);
+                            eprintln!("internal/mod.rs: {:?}",e);
                         }
                     }
                 },
                 Err(e)=>{
-                    eprintln!("{:?}",e);
+                    eprintln!("internal/mod.rs: {:?}",e);
                 }
             };
         }
@@ -177,28 +177,28 @@ impl InternalService
                     {
                         Ok(_)=>(),
                         Err(e)=>{
-                            eprintln!("{:?}",e);
+                            eprintln!("internal/mod.rs: {:?}",e);
                         }
                     }
                 },
                 Err(e)=>{
-                    eprintln!("{:?}",e);
+                    eprintln!("internal/mod.rs: {:?}",e);
                 }
             };
         }
     }
 
     fn sink_destruction(&self)->(){
-        //self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(false));
+        self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(false));
     }
 
     async fn handle_websocket(self, websocket: HyperWebsocket) -> () {       
 
-        println!("Serving websocket");
+        println!("internal/mod.rs: Serving websocket");
         let websocketstream = match websocket.await{
             Ok(websocketstream) => websocketstream,
             Err(e) => {
-                eprintln!("Websocket error: {:?}",e);
+                eprintln!("internal/mod.rs: Websocket error: {:?}",e);
                 return;
             },
         };
@@ -239,21 +239,21 @@ impl InternalService
             Self::handle_websocket_stream(&mut stream).await
         }).await
        {
-            Ok(_)=>println!("Websocket stream closed."),
+            Ok(_)=>println!("internal/mod.rs: Websocket stream closed."),
             Err(e) => {
-                eprintln!("Websocket stream error: {:?}",e);
+                eprintln!("internal/mod.rs: Websocket stream error: {:?}",e);
                 return;
             },
        }
 
-       println!("Closed websocket. Cleaning up sinks.");
+       println!("internal/mod.rs: Closed websocket. Cleaning up sinks.");
 
        //Remove the sink from the sink vec
        {
             let mut sinks = self.sinks.lock().await;
             let mut current_handler = self.sink_handler.lock().await;
 
-            println!("Removing sink.");            
+            println!("internal/mod.rs: Removing sink.");            
             sinks.remove(&sink_key);
 
             if sinks.len()<=0
@@ -272,7 +272,7 @@ impl InternalService
             *current_handler=None
         }
 
-        println!("Finished.");            
+        println!("internal/mod.rs: Finished.");            
     }
 }
 
@@ -282,7 +282,7 @@ impl StatefulHandler for InternalService {
             true=>{
                 let (response, websocket) = hyper_tungstenite::upgrade(request, None)?;
             
-                println!("Internal service received websocket request. Response is {:?}", response);
+                println!("internal/mod.rs: Internal service received websocket request. Response is {:?}", response);
                 // Spawn a task to handle the websocket connection.
                 tokio::spawn(async move {
                     self.handle_websocket(websocket).await
@@ -290,11 +290,11 @@ impl StatefulHandler for InternalService {
 
                 // Return the response so the spawned future can continue.
                 let boxed_response=box_existing_response(response);
-                println!("Boxed response is {:?}", boxed_response);
+                println!("internal/mod.rs: Boxed response is {:?}", boxed_response);
                 Ok(boxed_response)
             },
             false=>{
-                println!("Internal service received non-websocket request.");
+                println!("internal/mod.rs: Internal service received non-websocket request.");
                 let (parts, incoming) = request.into_parts();
                         
                 match parts.method {
@@ -303,31 +303,31 @@ impl StatefulHandler for InternalService {
                         {
                             Ok(body)=>body,
                             Err(e)=>{
-                                eprintln!("Couldn't get request body. {:?}",e);
+                                eprintln!("internal/mod.rs: Couldn't get request body. {:?}",e);
                                 return Ok(bad_request());
                             }
                         };
 
-                        println!("Received POST {:?} with body {:?}",parts.uri, body);
+                        println!("internal/mod.rs: Received POST {:?} with body {:?}",parts.uri, body);
 
                         Ok(Response::new(bytes_to_boxed_body("Ok")))
                     },
                     Method::GET => {
-                        //println!("Received GET for {:?}",parts.uri);                       
+                        //println!("internal/mod.rs: Received GET for {:?}",parts.uri);                       
                         
                         if parts.uri.path().starts_with(CONFIG_PREFACE){
                             let final_path=parts.uri.path().split_at(CONFIG_PREFACE.len()).1;
-                            //println!("Serving config {:?} - {:?}",&self.config_static_directory,final_path);
+                            //println!("internal/mod.rs: Serving config {:?} - {:?}",&self.config_static_directory,final_path);
                             
                             hyper_services::response_building::send_file(&self.config_static_directory,final_path,None).await
                         }
                         else {
-                            //println!("Serving base.");
+                            //println!("internal/mod.rs: Serving base.");
                             hyper_services::response_building::send_file(&self.internal_service_static_directory,parts.uri.path(),None).await
                         }
                     },
                     method=>{
-                        eprintln!("Received unexpected method {:?}",method);
+                        eprintln!("internal/mod.rs: Received unexpected method {:?}",method);
                         Ok(bad_request())
                     }
                 }
