@@ -63,6 +63,11 @@ fn stop_streaming(
     );
 }
 
+pub fn get_voice_command_json_file_path(params:&InitializationParameters)->String
+{
+    params.config_static_directory.to_string() + "/voice_commands.json"
+}
+
 pub async fn run_voice_command_listener(
     //wakeword_onnx_file:&str,
     //url:&str,
@@ -97,7 +102,7 @@ pub async fn run_voice_command_listener(
                 voice_command_listener(
                     params.wakeword_onnx_file.clone(),
                     params.whisper_server_url.clone(),
-                    params.config_static_directory.to_string() + "/voice_commands.json",
+                    get_voice_command_json_file_path(params),
                     spoke.clone()
                 ).await
             }
@@ -145,7 +150,7 @@ pub struct WakewordWhisperState{
 async fn voice_command_listener(
     wakeword_onnx_file:String,
     url:String,
-    config_file:String,
+    voice_config_file:String,
     spoke:CommunicationSpoke
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
@@ -179,7 +184,7 @@ async fn voice_command_listener(
         }
     }
 
-    let voice_command_list = match std::fs::read_to_string(config_file)
+    let voice_command_list = match std::fs::read_to_string(voice_config_file)
     {
         Ok(res)=>{
             match serde_json::from_str::<VoiceCommandList>(&res)

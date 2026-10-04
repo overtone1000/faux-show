@@ -16,15 +16,14 @@ use websocket::WebSocketStreamNext;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
-use crate::comm::{CommunicationHub, CommunicationSpoke, external_commands::Command, internal_notifications::InternalServiceNotification};
+use crate::{InitializationParameters, comm::{CommunicationHub, CommunicationSpoke, external_commands::Command, internal_notifications::InternalServiceNotification}, voice::{audio_stream::get_voice_command_json_file_path, voice_command::VoiceCommandList}};
 
 
 const CONFIG_PREFACE:&str="/config";
 
 #[derive(Clone)]
 pub struct InternalService {
-    internal_service_static_directory:String,
-    config_static_directory:String,
+    initialization_parameters:InitializationParameters,
     external_command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
     //internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>,
     spoke:CommunicationSpoke,
@@ -38,7 +37,7 @@ pub struct InternalService {
 impl InternalService
 {
     pub fn new(
-        initialization_parameters:&crate::InitializationParameters,
+        initialization_parameters:&InitializationParameters,
         external_command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
         //internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>
         spoke:CommunicationSpoke
@@ -48,15 +47,14 @@ impl InternalService
         //header_map.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN,header::HeaderValue::from_static("*"));
                         
         InternalService { 
-            internal_service_static_directory: initialization_parameters.internal_service_static_directory.clone(),
-            config_static_directory: initialization_parameters.config_static_directory.clone(),
+            initialization_parameters: initialization_parameters.clone(),
             external_command_receiver,
             //internal_service_notification_sender,
             spoke,
             sinks:Arc::new(Mutex::new(HashMap::new())),
             sink_handler:Arc::new(Mutex::new(None)),
             photoprism_key:initialization_parameters.photoprism_key.to_string(),
-            has_key:initialization_parameters.has_key.to_string()
+            has_key:initialization_parameters.has_key.to_string(),
             //header_map:Some(header_map)
         }
     }
@@ -184,6 +182,34 @@ impl InternalService
                 Err(e)=>{
                     eprintln!("internal/mod.rs: {:?}",e);
                 }
+            };
+        }
+
+        {
+            let path=get_voice_command_json_file_path(&self.initialization_parameters);
+            match std::fs::read_to_string(path)
+            {
+                Ok(vco)=>{
+                    match serde_json::from_str::<VoiceCommandList>(&vco)
+                    {
+                        Ok(vcl) => {
+                            match serde_json::to_string(&Command::VoiceControlOptions(vcl))
+                            {
+                                Ok(c) => {
+                                    match sink.send(Message::Text(Utf8Bytes::from(c))).await
+                                    {
+                                        Ok(_)=>(),
+                                        Err(e) => eprintln!("internal/mod.rs: {:?}",e),
+                                    }
+                                },
+                                Err(e) => eprintln!("internal/mod.rs: {:?}",e),
+                            }
+                            
+                        },
+                        Err(e) => eprintln!("internal/mod.rs: {:?}",e),
+                    }
+                },
+                Err(e) => eprintln!("internal/mod.rs: {:?}",e)
             };
         }
     }
@@ -319,11 +345,11 @@ impl StatefulHandler for InternalService {
                             let final_path=parts.uri.path().split_at(CONFIG_PREFACE.len()).1;
                             //println!("internal/mod.rs: Serving config {:?} - {:?}",&self.config_static_directory,final_path);
                             
-                            hyper_services::response_building::send_file(&self.config_static_directory,final_path,None).await
+                            hyper_services::response_building::send_file(&self.initialization_parameters.config_static_directory,final_path,None).await
                         }
                         else {
                             //println!("internal/mod.rs: Serving base.");
-                            hyper_services::response_building::send_file(&self.internal_service_static_directory,parts.uri.path(),None).await
+                            hyper_services::response_building::send_file(&self.initialization_parameters.internal_service_static_directory,parts.uri.path(),None).await
                         }
                     },
                     method=>{

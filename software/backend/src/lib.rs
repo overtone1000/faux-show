@@ -20,7 +20,7 @@ use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
 use crate::voice::audio_stream::{run_voice_command_listener};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InitializationParameters
 {
     internal_service_static_directory:String,

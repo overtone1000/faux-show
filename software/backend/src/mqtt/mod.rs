@@ -6,7 +6,7 @@ use tokio::sync::{broadcast, mpsc::UnboundedSender};
 
 use crate::comm::{CommunicationHub, CommunicationSpoke, external_commands::{AutoTabConfig, Command}, internal_notifications::InternalServiceNotification};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MQTTConfiguration
 {
     pub id:String,
