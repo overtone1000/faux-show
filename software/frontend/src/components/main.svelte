@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { mdiCheck, mdiCircleOffOutline, mdiCircleOutline, mdiClock, mdiCross, mdiDebugStepInto, mdiImageMultiple, mdiEarHearing } from '@mdi/js';
+    import { mdiCheck, mdiCircleOffOutline, mdiCircleOutline, mdiClock, mdiCross, mdiDebugStepInto, mdiImageMultiple, mdiEarHearing, mdiViewCompactOutline } from '@mdi/js';
     import { mdiRefresh } from '@mdi/js';
     import { mdiRobot } from '@mdi/js';
     import IconTab, { type TabProps } from './icon_tab.svelte';
@@ -214,7 +214,7 @@
     let photoprism_key=$state<string|undefined>(undefined);
     let has_key=$state<string|undefined>(undefined);
     let voice_control_state=$state<VoiceControlState>(VoiceControlState.NotEnabled);
-    let voice_control_options=$state<VoiceControlOptions>([]);
+    let voice_control_options=$state<VoiceControlOptions>({commands:[]});
     function handle_server_command(command:Command)
     {
         console.debug("Handling command.");
@@ -256,7 +256,7 @@
 
         if(command.VoiceControlOptions)
         {
-            console.debug("Voice control options received.");
+            console.debug("Voice control options received.",command.VoiceControlOptions);
             voice_control_options=command.VoiceControlOptions;
         }
         
@@ -287,6 +287,7 @@
 
     let socket:WebSocket|undefined=undefined;
     let socket_state:boolean=$state(false);
+
     function open_socket(){
         if(socket_url)
         {
@@ -545,11 +546,35 @@
         ()=>{
             switch(voice_control_state)
             {
-                case VoiceControlState.NotEnabled:return "gray";
+                case VoiceControlState.NotEnabled:{console.info("Voice control disabled!");return "gray";}
                 case VoiceControlState.ListeningForWakeword:return "yellow";
                 case VoiceControlState.StreamingToWhisper:return "green";
                 default:return "black";
             }
+        }
+    );
+
+    let voice_control_option_list:string[]=$derived.by(
+        ()=>{
+            let retval:string[]=[];
+            for(const vco of voice_control_options.commands)
+            {
+                let this_row="";
+                if(vco.mode.Contains)
+                {
+                    this_row="\"" + vco.mode.Contains + "\"";   
+                }
+                if(vco.action.OpenPage !== undefined)
+                {
+                    this_row+=" will open " + vco.action.OpenPage;
+                }
+                else if(vco.action.AcknowledgeAlarms !== undefined)
+                {
+                    this_row+=" will acknowledge alarms."
+                }
+                retval.push(this_row);
+            }
+            return retval;
         }
     );
 </script>
@@ -612,8 +637,10 @@
             </div>
         {:else if show_voice_instructions}
             <div class="overlay voice_instructions">
-                {#each voice_control_options as voice_option}
-                    Need to explain option!
+                {#each voice_control_option_list as voice_option}
+                <div>
+                    {voice_option}
+                </div>
                 {/each}
             </div>
         {/if}
@@ -701,7 +728,9 @@
         color:white;
         display:flex;
         flex-direction: column;
-        justify-content: end;
+        justify-content: space-evenly;
+        align-items:center;
+        font-size:xx-large;
     }
     .error
     {

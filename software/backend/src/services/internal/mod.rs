@@ -81,7 +81,7 @@ impl InternalService
                                 match sink.send(Message::text(command_as_string.clone())).await
                                 {
                                     Ok(_)=>{
-                                        println!("internal/mod.rs: Command sent via websocket.");
+                                        //println!("internal/mod.rs: Command sent via websocket.");
                                     },
                                     Err(e)=>{
                                         eprintln!("internal/mod.rs: Websocket send error: {:?}",e);

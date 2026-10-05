@@ -81,13 +81,17 @@ pub async fn run_voice_command_listener(
     let mut state_receiver=spoke.get_internal_state_receiver();
     loop {
         
+        println!("audio_stream.rs: Outer loop starting.");
+
         let internal_state_voice_command_enabled = async {
             //match internal_service_notification_receiver.recv().await
             match state_receiver.changed().await
             {
                 Ok(()) => {
                     let state = state_receiver.borrow();
-                    state.front_end_connected && !state.sleeping
+                    let retval =state.front_end_connected && !state.sleeping;
+                    println!("audio_stream.rs: State updated. Front end connected: {}. Sleeping: {}. Audio enabled: {}",state.front_end_connected,state.sleeping,retval);
+                    retval
                 },
                 Err(e) => {
                     eprintln!("audio_stream.rs: {:?}",e);
@@ -99,6 +103,7 @@ pub async fn run_voice_command_listener(
         let handle=async {
             if voice_command_enabled
             {
+                println!("audio_stream.rs: Voice enabled. Starting.");
                 voice_command_listener(
                     params.wakeword_onnx_file.clone(),
                     params.whisper_server_url.clone(),
@@ -108,6 +113,8 @@ pub async fn run_voice_command_listener(
             }
             else
             {
+                println!("audio_stream.rs: Voice disabled. Sleeping voice.");
+                spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::NotEnabled));
                 std::future::pending().await
             }
         };
@@ -124,6 +131,7 @@ pub async fn run_voice_command_listener(
             voice_command_enabled_new_value=internal_state_voice_command_enabled=>{
                 voice_command_enabled=voice_command_enabled_new_value;
             },
+
             result=handle=>{
                 match result
                 {
@@ -138,6 +146,8 @@ pub async fn run_voice_command_listener(
                 }
             }
         }
+
+        println!("audio_stream.rs: Outer loop finished");
     }
 }
 
@@ -206,9 +216,6 @@ async fn voice_command_listener(
     //let mut last_detection:Option<SystemTime>=None;
     
     let (start_whisper, stop_whisper)={
-
-         
-
         let spoke_clone_1 = spoke.clone();
         let spoke_clone_2 = spoke.clone();
         let voice_control_state_sender_clone_1 = voice_control_state_sender.clone();

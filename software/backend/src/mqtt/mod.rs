@@ -60,10 +60,10 @@ fn monitor_switch(
 {
     let handle_state_change =move |state:SwitchState|->Option<SwitchState>
     {
-        let command:Command=Command::SetScreenState(state.as_bool());
+        let command:Command=Command::SetScreenState(state.as_bool()); //Screen state is same as switch state
         spoke.send_external_command(command);
         
-        let notification:InternalServiceNotification=InternalServiceNotification::Sleep(state.as_bool());
+        let notification:InternalServiceNotification=InternalServiceNotification::Sleep(!state.as_bool()); //Sleep is opposite of switch state!
         spoke.notify_of_state_change(notification);
 
         match crate::device::set_screen_state(state.as_bool(),&kiosk_uid)
