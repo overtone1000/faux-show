@@ -35,6 +35,9 @@ tokio-tungstenite = "^0"
 livekit-wakeword = "^0"
 circular-buffer = "^1"
 
+#Raw numbers in whisper output would be better, so just convert
+text2num = "^2"
+
 #For livekit wakeword optimization
 [profile.dev]
 opt-level = 1

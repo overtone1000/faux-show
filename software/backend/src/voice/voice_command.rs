@@ -95,6 +95,8 @@ impl VoiceCommandMode
 {
     fn check_for_match(&self, segments:&Vec<LivekitTranscriptionSegment>)->Option<f32>
     {
+        println!("Checking for match in {:?}",segments);
+        println!("Need to use text2num library (already in crate) to modify text. But this function is called very frequently! Need to cache? Probably not.");
         match self
         {
             VoiceCommandMode::Contains(match_string) => {
@@ -106,7 +108,7 @@ impl VoiceCommandMode
                     }
                 ).collect();
 
-                println!("Tidied words: {:?}",tidied_words);
+                //println!("Tidied words: {:?}",tidied_words);
 
                 let mut scores:Vec<f32>=Vec::new();
                 
@@ -122,9 +124,9 @@ impl VoiceCommandMode
                                 match tidied_words.get(current_word_index)
                                 {
                                     Some(current_word) => {
-                                            println!("   current_word: \"{}\"", current_word);
+                                            //println!("   current_word: \"{}\"", current_word);
                                             let tsword_cleaned = tsword.word.to_lowercase().trim().trim_matches(['?','!','.']).to_string();
-                                            println!("   tsword_cleaned: \"{}\"", tsword_cleaned);
+                                            //println!("   tsword_cleaned: \"{}\"", tsword_cleaned);
                                             if tsword_cleaned == *current_word
                                             {
                                                 println!("Match!");
