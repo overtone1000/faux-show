@@ -19,6 +19,37 @@ const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 pub const CHUNK_BUFFER_MULTIPLE:usize=5;
 const WEBSOCKET_MESSAGE_BUFFER_LENGTH:usize=3;
 
+#[derive(Debug, Clone)]
+enum VoiceError
+{
+    NoDevice,
+    NoConfigs,
+    NoSupportedConfig,
+    StreamCreationFailure(String),
+    StreamStartFailure(String),
+    SerializationFailure(String),
+    FileSystem(String)
+}
+
+impl std::fmt::Display for VoiceError
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let front="Voice control error: ";
+        match self
+        {
+            VoiceError::NoDevice => write!(f, "{}Device not found.",front),
+            VoiceError::NoConfigs => write!(f, "{}Could not enumerate configs.",front),
+            VoiceError::NoSupportedConfig => write!(f, "{}Supported config not found.",front),
+            VoiceError::StreamCreationFailure(message) => write!(f, "{}Stream creation  error: {}",front,message),
+            VoiceError::StreamStartFailure(message) => write!(f, "{}Stream start error: {}",front,message),
+            VoiceError::SerializationFailure(message) => write!(f, "{}Serialization error: {}",front,message),
+            VoiceError::FileSystem(message) => write!(f, "{}File system error: {}",front,message),
+        }
+    }
+}
+
+impl std::error::Error for VoiceError{}
+
 fn get_state(voice_control_state_receiver:&mut watch::Receiver<WakewordWhisperState>)->WakewordWhisperState
 {
     //When getting state, it's best to clone the value to release the borrow, especially if subsequent async tasks are performed.
@@ -141,7 +172,18 @@ pub async fn run_voice_command_listener(
                     },
                     Err(e)=>{
                         eprintln!("audio_stream.rs: {:?}",e);
-                        tokio::time::sleep(Duration::from_secs(10)).await;
+
+                        let sleep_delay = match *e
+                        {
+                            VoiceError::NoDevice => 60,
+                            VoiceError::NoConfigs => 600,
+                            VoiceError::NoSupportedConfig => 600,
+                            VoiceError::StreamCreationFailure(_) => 60,
+                            VoiceError::StreamStartFailure(_) => 60,
+                            VoiceError::SerializationFailure(_) => 600,
+                            VoiceError::FileSystem(_) => 600,
+                        };
+                        tokio::time::sleep(Duration::from_secs(sleep_delay)).await;
                     }
                 }
             }
@@ -162,7 +204,7 @@ async fn voice_command_listener(
     url:String,
     voice_config_file:String,
     spoke:CommunicationSpoke
-)->Result<(), Box<dyn std::error::Error + Send + Sync>>
+)->Result<(), Box<VoiceError>>//Box<dyn std::error::Error + Send + Sync>>
 {
     //senders and receivers
     let (wakeword_chunk_transmitter, wakeword_chunk_receiver) = mpsc::channel::<Box<[i16;CHUNK_SIZE]>>(CHUNK_BUFFER_MULTIPLE);
@@ -179,20 +221,43 @@ async fn voice_command_listener(
     
     let host = cpal::default_host();
 
-    let device = host.default_input_device().expect("Should exist.");
-    for supported_config in device.supported_input_configs().expect("Should get configs")
-    {
-        if supported_config.sample_format().is_int() && 
-            supported_config.sample_format().bits_per_sample()==bits_per_sample_u32 &&
-            supported_config.channels() == CHANNELS &&
-            supported_config.min_sample_rate() <= sample_rate_u32 &&
-            supported_config.max_sample_rate() >= sample_rate_u32
-        {
-            println!("audio_stream.rs: Desired config found.");
-            println!("audio_stream.rs:    {:?}",supported_config);
-            break;
-        }
-    }
+    let device = match host.default_input_device(){
+        Some(device)=>{
+            match device.supported_input_configs()
+            {
+                Ok(configs)=>{
+                    let mut supported_config_found=false;
+                    for supported_config in configs
+                    {
+                        if supported_config.sample_format().is_int() && 
+                            supported_config.sample_format().bits_per_sample()==bits_per_sample_u32 &&
+                            supported_config.channels() == CHANNELS &&
+                            supported_config.min_sample_rate() <= sample_rate_u32 &&
+                            supported_config.max_sample_rate() >= sample_rate_u32
+                        {
+                            println!("audio_stream.rs: Desired config found.");
+                            println!("audio_stream.rs:    {:?}",supported_config);
+                            supported_config_found=true;
+                            break;
+                        }
+                    }
+                    if supported_config_found {
+                        device
+                    }
+                    else
+                    {
+                        return Err(Box::new(VoiceError::NoSupportedConfig));
+                    }
+                },
+                Err(e)=>{
+                    println!("{:?}",e);
+                    return Err(Box::new(VoiceError::NoConfigs));
+                }
+            }
+        },
+        None=>{return Err(Box::new(VoiceError::NoDevice));}
+    };
+    
 
     let voice_command_list = match std::fs::read_to_string(voice_config_file)
     {
@@ -200,10 +265,10 @@ async fn voice_command_listener(
             match serde_json::from_str::<VoiceCommandList>(&res)
             {
                 Ok(vcl) => vcl,
-                Err(e)=>return Err(Box::new(e))
+                Err(e)=>return Err(Box::new(VoiceError::SerializationFailure(e.to_string())))
             }
         },
-        Err(e)=>return Err(Box::new(e))
+        Err(e)=>return Err(Box::new(VoiceError::FileSystem(e.to_string())))
     };
     
     let stream_config:StreamConfig=StreamConfig { channels: CHANNELS, sample_rate: sample_rate_u32, buffer_size: cpal::BufferSize::Default };
@@ -375,7 +440,7 @@ async fn voice_command_listener(
         Ok(stream)=>stream,
         Err(e)=>{
             eprintln!("audio_stream.rs: Failed to build input stream");
-            return Err(Box::new(e));
+            return Err(Box::new(VoiceError::StreamCreationFailure(e.to_string())));
         }
     };
 
@@ -384,7 +449,7 @@ async fn voice_command_listener(
         Ok(())=>{},
         Err(e)=>{
             eprintln!("audio_stream.rs: Failed to start stream");
-            return Err(Box::new(e));
+            return Err(Box::new(VoiceError::StreamStartFailure(e.to_string())));
         }
     }
 

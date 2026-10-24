@@ -37,6 +37,8 @@ bash ./software/deploy/scripts/03_push_to_device.sh
 ```
 
 ### Restart after backend update
+
+This is the manual cmomand, but it's already in push to device script.
 ```
 sudo systemctl restart faux-show-backend cage-tty1
 ```

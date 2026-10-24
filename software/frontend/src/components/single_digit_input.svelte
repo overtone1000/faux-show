@@ -57,10 +57,10 @@
         height: 40%;
         align-content: center;
         text-align: center;
-        font-size: 8em;
+        font-size: 20vh;
     }
     .arrow
     {
-        height: 20%
+        height: 20vh;
     }
 </style>

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { NewTimerState } from "$lib/timer";
+	import type { TimerInput } from "$lib/timer_input";
 	import SingleDigitInput from "./single_digit_input.svelte";
 
     export type ModifyTimerState =
     {
-        new_timer_input:NewTimerState
+        new_timer_input:TimerInput
     };
 
     let {
@@ -41,12 +41,12 @@
     }
     .colon
     {
-        font-size: 12em;
+        font-size: 20vh;
     }
     .pair
     {
         height: 100%;
-        width: 25%;
+        width: 25vw;
         display: flex;
         flex-direction: row;
     }

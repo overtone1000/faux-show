@@ -153,7 +153,7 @@ pub async fn start_and_run(params:InitializationParameters) {
             result=internal_service_future=>{eprintln!("Internal service ended."); result},
             result=external_service_future=>{eprintln!("External service ended."); result},
             result=mqtt_client_future=>{eprintln!("MQTT service ended."); result},
-            //result=voice_command_handle=>{eprintln!("Voice service ended."); result}, //Disable for now, need to test on specific device
+            result=voice_command_handle=>{eprintln!("Voice service ended."); result},
         };
 
         match result
