@@ -90,4 +90,4 @@
 }
 
 #Run from repo root
-#nix build --extra-experimental-features 'nix-command flakes' ./deploy/nix/#
+#nix build --extra-experimental-features 'nix-command flakes' ./software/deploy/nix/#
