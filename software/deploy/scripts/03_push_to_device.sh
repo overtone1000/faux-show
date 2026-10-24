@@ -37,6 +37,8 @@ ssh -t $SSH_DEST \
     && echo DEVICE_ID=$DEVICE_ID | sudo tee -a $ENVIRONMENT_FILE \
     && echo PHOTOPRISM_KEY=$PHOTOPRISM_KEY | sudo tee -a $ENVIRONMENT_FILE \
     && echo HAS_KEY=$HAS_KEY | sudo tee -a $ENVIRONMENT_FILE \
+    && echo WHISPER_SERVER=$WHISPER_SERVER | sudo tee -a $ENVIRONMENT_FILE \
+    && echo WAKEWORD_ONNX_FILE=$WAKEWORD_ONNX_FILE | sudo tee -a $ENVIRONMENT_FILE \
     "
 
 #Copy frontend to device
