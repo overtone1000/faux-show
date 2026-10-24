@@ -90,4 +90,5 @@
 }
 
 #Run from repo root
-#nix build --extra-experimental-features 'nix-command flakes' ./software/deploy/nix/#
+#nix build --extra-experimental-features 'nix-command flakes' ./software/deploy/nix/# -out ./software/deploy/nix/result
+#OR just use the script from the repo root `bash ./software/deploy/scripts/01_build_backend.sh`

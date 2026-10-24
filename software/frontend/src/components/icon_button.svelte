@@ -30,7 +30,7 @@
         }
     );
 
-    console.debug($inspect(dynamic_style));
+    //console.debug($inspect(dynamic_style));
 
 </script>
 
