@@ -102,6 +102,8 @@ in
     #firefox #no h.265 support, #use module (below) instead to allow extra options
     #chromium #use module (below) to allow extra options
     wlr-randr
+
+    tree
   ];
 
   #programs.chromium = {

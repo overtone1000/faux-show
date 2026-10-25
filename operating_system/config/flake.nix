@@ -185,9 +185,10 @@
             ENV{UDISKS_IGNORE}="1"
         '';
 
-        environment.systemPackages = with pkgs; [
-          tree
-        ];
+        #Moved to kiosk to try to get build to finish.
+        #environment.systemPackages = with pkgs; [
+        #  tree
+        #];
 
 
         #users.users.nixos.openssh.authorizedKeys.keys = [

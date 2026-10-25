@@ -20,7 +20,7 @@ struct LivekitConfig
     hotwords:String //comma separated list of words that the model should expect
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 struct FloatString
 {
     value:f32
@@ -55,13 +55,33 @@ impl Serialize for FloatString
     }
 }
 
-#[derive(Serialize,Deserialize,Debug)]
+#[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct LivekitTranscriptionWord
 {
     pub word:String,
-    pub start:FloatString,
-    pub end:FloatString,
+    pub start:FloatString, //start time in seconds
+    pub end:FloatString, //end time in seconds
     pub probability:f32
+}
+
+impl text2num::Token for LivekitTranscriptionWord
+{
+    fn text(&self) -> Cow<'_, str> {
+        self.word.into()
+    }
+
+    fn text_lowercase(&self) -> Cow<'_, str> {
+        self.word.into()
+    }
+
+    fn nt_separated(&self, previous: &Self) -> bool {
+        // if there is a voice pause of more than 100ms between words, it is worth a punctuation
+        self.start.value - previous.end.value > 100
+    }
+
+    fn not_a_number_part(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Serialize,Deserialize,Debug)]
