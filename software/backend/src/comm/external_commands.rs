@@ -76,11 +76,18 @@ pub struct AutoTabConfig
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Initialization
+{
+    pub photoprism_key:String,
+    pub ha_key:String,
+    pub ha_url:String
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Command
 {
+    Initialization(Initialization),
     AutoTab(AutoTabConfig), //Tell frontend to display a specific tab
-    PhotoprismKey(String), //Give photoprism key to frontend
-    HASKey(String), //Give has key to frontend
     SetScreenState(bool), //Tell frontend to render a simple display
     SetVoiceControlState(VoiceControlState), //Tell frontend voice control state,
     AcknowledgeAlarms(bool), //Acknowledge alarms

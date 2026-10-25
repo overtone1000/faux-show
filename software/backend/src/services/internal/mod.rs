@@ -16,7 +16,7 @@ use websocket::WebSocketStreamNext;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
-use crate::{InitializationParameters, comm::{CommunicationHub, CommunicationSpoke, external_commands::Command, internal_notifications::InternalServiceNotification}, voice::{audio_stream::get_voice_command_json_file_path, voice_command::VoiceCommandList}};
+use crate::{InitializationParameters, comm::{CommunicationHub, CommunicationSpoke, external_commands::{Command, Initialization}, internal_notifications::InternalServiceNotification}, voice::{audio_stream::get_voice_command_json_file_path, voice_command::VoiceCommandList}};
 
 
 const CONFIG_PREFACE:&str="/config";
@@ -31,6 +31,7 @@ pub struct InternalService {
     sink_handler:Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     photoprism_key:String,
     has_key:String,
+    ha_url:String
     //header_map:Option<HeaderMap>
 }
 
@@ -55,6 +56,7 @@ impl InternalService
             sink_handler:Arc::new(Mutex::new(None)),
             photoprism_key:initialization_parameters.photoprism_key.to_string(),
             has_key:initialization_parameters.has_key.to_string(),
+            ha_url:initialization_parameters.ha_url.to_string()
             //header_map:Some(header_map)
         }
     }
@@ -149,26 +151,15 @@ impl InternalService
 
         self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(true));
 
+        let init_command=Command::Initialization
+            (Initialization{
+                photoprism_key:self.photoprism_key.clone(),
+                ha_key:self.has_key.clone(),
+                ha_url:self.ha_url.clone()
+            })
+        ;
         { 
-            match serde_json::to_string(&Command::PhotoprismKey(self.photoprism_key.clone()))
-            {
-                Ok(key)=>{
-                    match sink.send(Message::Text(Utf8Bytes::from(key))).await
-                    {
-                        Ok(_)=>(),
-                        Err(e)=>{
-                            eprintln!("internal/mod.rs: {:?}",e);
-                        }
-                    }
-                },
-                Err(e)=>{
-                    eprintln!("internal/mod.rs: {:?}",e);
-                }
-            };
-        }
-
-        {
-            match serde_json::to_string(&Command::HASKey(self.has_key.clone()))
+            match serde_json::to_string(&init_command)
             {
                 Ok(key)=>{
                     match sink.send(Message::Text(Utf8Bytes::from(key))).await

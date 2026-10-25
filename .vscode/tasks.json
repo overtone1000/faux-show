@@ -54,7 +54,8 @@
                     "KIOSK_USER_ID":"2000",
                     "PHOTOPRISM_KEY":"${input:photoprism_key}",
                     "HAS_KEY":"${input:has_key}",
-                    "WHISPER_SERVER":"ws://127.0.0.1:9090",
+                    "HAS_URL":"http://10.10.10.10:8123",
+                    "WHISPER_SERVER":"ws://10.10.10.10:9090",
                     "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx",
                 }
             }
@@ -78,7 +79,8 @@
                     "KIOSK_USER_ID":"2000",
                     "PHOTOPRISM_KEY":"${input:photoprism_key}",
                     "HAS_KEY":"${input:has_key}",
-                    "WHISPER_SERVER":"ws://127.0.0.1:9090",
+                    "HAS_URL":"http://10.10.10.10:8123",
+                    "WHISPER_SERVER":"ws://10.10.10.10:9090",
                     "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx",
                 }
             }

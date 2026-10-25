@@ -1,3 +1,10 @@
+export type Initialization =
+{
+    photoprism_key:string,
+    ha_key:string,
+    ha_url:string
+};
+
 export type AutoTab = {
     url:string,
     priority:number,
@@ -36,9 +43,8 @@ export type VoiceControlOptions =
 }
 
 export type Command = {
+    Initialization?:Initialization,
     AutoTab?:AutoTab,
-    PhotoprismKey?:string,
-    HASKey?:string,
     SetScreenState?:boolean,
     SetVoiceControlState?:VoiceControlState,
     AcknowledgeAlarms?:boolean,

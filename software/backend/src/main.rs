@@ -14,6 +14,7 @@ const DEVICE_MQTT_ID_ENV_KEY:&str="DEVICE_ID";
 
 const PHOTOPRISM_KEY_ENV_KEY:&str="PHOTOPRISM_KEY";
 const HAS_KEY_ENV_KEY:&str="HAS_KEY";
+const HAS_URL_ENV_KEY:&str="HAS_URL";
 
 const WHISPER_SERVER_URL_KEY:&str="WHISPER_SERVER";
 const WAKEWORD_ONNX_FILE_KEY:&str="WAKEWORD_ONNX_FILE";
@@ -126,6 +127,17 @@ async fn main() {
         }
     };
 
+    let has_url:String = match std::env::var(HAS_URL_ENV_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide HAS URL as an environment variable.");
+            return;
+        }
+    };
+
     let auth:Auth=Auth{
         user,
         password
@@ -181,6 +193,7 @@ async fn main() {
                 mqtt_config,
                 photoprism_key,
                 has_key,
+                has_url,
                 whisper_server_url,
                 wakeword_onnx_file
             )
@@ -197,6 +210,7 @@ async fn main() {
                 mqtt_config,
                 photoprism_key,
                 has_key,
+                has_url,
                 whisper_server_url,
                 wakeword_onnx_file
             )

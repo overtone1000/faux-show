@@ -213,6 +213,7 @@
 
     let photoprism_key=$state<string|undefined>(undefined);
     let has_key=$state<string|undefined>(undefined);
+    let has_url=$state<string|undefined>(undefined);
     let voice_control_state=$state<VoiceControlState>(VoiceControlState.NotEnabled);
     let voice_control_options=$state<VoiceControlOptions>({commands:[]});
     function handle_server_command(command:Command)
@@ -241,17 +242,12 @@
             }
         }
         
-        if(command.PhotoprismKey)
+        if(command.Initialization)
         {
-            console.debug("Received photoprism key.");
-            photoprism_key=command.PhotoprismKey;
-        }
-
-        if(command.HASKey)
-        {
-            console.debug("HAS key received.");
-            has_key=command.HASKey;
-            //speak("Hey, TTS is working!");
+            console.debug("Received init");
+            photoprism_key=command.Initialization.photoprism_key;
+            has_key=command.Initialization.ha_key;
+            has_url=command.Initialization.ha_url;
         }
 
         if(command.VoiceControlOptions)
@@ -364,11 +360,14 @@
     // TTS
     function speak(text:string)
     {
-        console.warn("Need to make this and some of the JSON below configurable via environment variables.");
+        if(has_url!==undefined)
+        {
+            
+        }
         //For pico tts
-        //const BASE="http://10.10.10.10:8123/api/services/tts/speak";
+        //const BASE=whisper_server+"/api/services/tts/speak";
         //For cloud say
-        const BASE="http://10.10.10.10:8123/api/services/tts/cloud_say";
+        const BASE=has_url+"/api/services/tts/cloud_say";
 
         if(has_key)
         {
