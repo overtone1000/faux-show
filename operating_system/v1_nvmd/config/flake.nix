@@ -49,6 +49,10 @@
           nixpkgs-fmt
           nix-output-monitor
           nixos-anywhere.packages.${system}.default
+          
+          #libxkbcommon errors are causing build problems, so trying to remedy that with the following two, which may be dependencies for that build
+          libxkbcommon
+          xkeyboard_config
         ];
       };
     });

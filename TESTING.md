@@ -69,6 +69,8 @@ curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application
 curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"tts.pico_tts_en_us","media_player_entity_id":"media_player.kitchen_2_2","message":"The timer is done."}' $URL/api/services/tts/speak
 
 ### Some fun
+curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"Test"}' $URL/api/services/tts/cloud_say
+
 curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"Hey, Kai, come here."}' $URL/api/services/tts/cloud_say
 
 curl -X "POST" -H "Authorization: Bearer $HAS_KEY" -H "Content-Type: application/json" --json '{"entity_id":"media_player.kitchen_2_2","message":"Want to hear a joke?"}' $URL/api/services/tts/cloud_say

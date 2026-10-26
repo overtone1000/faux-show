@@ -107,6 +107,7 @@ pub fn extract_timer_init(match_result:MatchResult)
         "seconds"
     ];
 
+    /*
     let mut continue_checking=num_sentence.len()>0;
 
     while continue_checking
@@ -116,4 +117,5 @@ pub fn extract_timer_init(match_result:MatchResult)
             
         }
     }
+    */
 }

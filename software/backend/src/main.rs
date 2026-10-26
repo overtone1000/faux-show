@@ -15,6 +15,7 @@ const DEVICE_MQTT_ID_ENV_KEY:&str="DEVICE_ID";
 const PHOTOPRISM_KEY_ENV_KEY:&str="PHOTOPRISM_KEY";
 const HAS_KEY_ENV_KEY:&str="HAS_KEY";
 const HAS_URL_ENV_KEY:&str="HAS_URL";
+const MQTT_IP_ENV_KEY:&str="MQTT_IP";
 
 const WHISPER_SERVER_URL_KEY:&str="WHISPER_SERVER";
 const WAKEWORD_ONNX_FILE_KEY:&str="WAKEWORD_ONNX_FILE";
@@ -165,6 +166,17 @@ async fn main() {
         }
     };
     
+    let mqtt_ip:String = match std::env::var(MQTT_IP_ENV_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide mqtt IP as an environment variable.");
+            return;
+        }
+    };
+    
 
     let mqtt_config = faux_show_backend::mqtt::MQTTConfiguration
     {
@@ -173,7 +185,7 @@ async fn main() {
         origin_name: "Tyler Moore".to_string(),
         origin_sw: "0.1.0".to_string(),
         client_id: device_mqtt_id.to_string()+"_client",
-        server_url: "10.10.10.10".to_string(),
+        server_url: mqtt_ip,
         server_port: 1883,
         object_id: device_mqtt_id.to_string(),
         discovery_prefix: has_mqtt::mqtt_client::DEFAULT_DISCOVERY_PREFIX.to_string(),

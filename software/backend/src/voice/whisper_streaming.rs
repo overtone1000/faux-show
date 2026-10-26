@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{borrow::Cow, time::Duration};
 
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use serde::{Deserialize, Serialize};
@@ -67,16 +67,16 @@ pub struct LivekitTranscriptionWord
 impl text2num::Token for LivekitTranscriptionWord
 {
     fn text(&self) -> Cow<'_, str> {
-        self.word.into()
+        self.word.clone().into()
     }
 
     fn text_lowercase(&self) -> Cow<'_, str> {
-        self.word.into()
+        self.word.to_lowercase().into()
     }
 
     fn nt_separated(&self, previous: &Self) -> bool {
         // if there is a voice pause of more than 100ms between words, it is worth a punctuation
-        self.start.value - previous.end.value > 100
+        self.start.value - previous.end.value > 0.1
     }
 
     fn not_a_number_part(&self) -> bool {

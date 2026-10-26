@@ -90,6 +90,7 @@ impl VoiceCommand
             VoiceCommandMode::Timer => {
                 //doesn't use action
                 //need to parse out name and time from timer
+                eprintln!("Need to do more here!");
                 extract_timer_init(match_result);
             },
         }
@@ -102,7 +103,6 @@ impl VoiceCommandMode
     fn check_for_match(&self, segments:&Vec<LivekitTranscriptionSegment>)->Option<MatchResult>
     {
         println!("Checking for match in {:?}",segments);
-        println!("Need to use text2num library (already in crate) to modify text. But this function is called very frequently! Need to cache? Probably not.");
         match self
         {
             VoiceCommandMode::Contains(match_string) => {
@@ -111,9 +111,7 @@ impl VoiceCommandMode
             VoiceCommandMode::Timer => {
                 check_for_match_string("timer".to_string(),segments)
             },
-        };
-
-        None
+        }
     }
 }
 

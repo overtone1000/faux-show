@@ -330,7 +330,7 @@ impl StatefulHandler for InternalService {
                         Ok(Response::new(bytes_to_boxed_body("Ok")))
                     },
                     Method::GET => {
-                        //println!("internal/mod.rs: Received GET for {:?}",parts.uri);                       
+                        println!("internal/mod.rs: Received GET for {:?}",parts.uri);                       
                         
                         if parts.uri.path().starts_with(CONFIG_PREFACE){
                             let final_path=parts.uri.path().split_at(CONFIG_PREFACE.len()).1;

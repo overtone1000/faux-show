@@ -362,48 +362,50 @@
     {
         if(has_url!==undefined)
         {
-            
-        }
-        //For pico tts
-        //const BASE=whisper_server+"/api/services/tts/speak";
-        //For cloud say
-        const BASE=has_url+"/api/services/tts/cloud_say";
+            //For pico tts
+            //const BASE=whisper_server+"/api/services/tts/speak";
+            //For cloud say
+            const BASE=has_url+"/api/services/tts/cloud_say";
 
-        if(has_key)
-        {
-            fetch(
-                BASE,
-                {
-                    method: "POST",
-                    //mode: "no-cors",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer " + has_key,
-                        //"Origin": window.location.origin
-                    },
-                    //For picoTTS
-                    /*
-                    body: JSON.stringify(
-                        {
-                            entity_id:"tts.pico_tts_en_us",
-                            media_player_entity_id:"media_player.kitchen_2_2",
-                            message:text
-                        }
-                    )
-                    */
-                    //For cloud say
-                    body: JSON.stringify(
-                        {
-                            entity_id:"media_player.kitchen_2_2",
-                            message:text
-                        }
-                    )
-                }
-            ).then(
-                ((resp)=>{
-                    console.debug("Speak result:",resp);
-                })
-            )
+            if(has_key)
+            {
+                //console.debug("Sending speak:",text);
+                //console.debug("url",BASE);
+                //console.debug("has_key",has_key);
+                fetch(
+                    BASE,
+                    {
+                        method: "POST",
+                        //mode: "no-cors",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": "Bearer " + has_key,
+                            //"Origin": window.location.origin
+                        },
+                        //For picoTTS
+                        /*
+                        body: JSON.stringify(
+                            {
+                                entity_id:"tts.pico_tts_en_us",
+                                media_player_entity_id:"media_player.kitchen_2_2",
+                                message:text
+                            }
+                        )
+                        */
+                        //For cloud say
+                        body: JSON.stringify(
+                            {
+                                entity_id:"media_player.kitchen_2_2",
+                                message:text
+                            }
+                        )
+                    }
+                ).then(
+                    ((resp)=>{
+                        console.debug("Speak result:",resp);
+                    })
+                )
+            }
         }
     }
 

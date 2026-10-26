@@ -47,7 +47,7 @@
     {
         white-space: nowrap;
         font-family: Inter;
-        font-size: 14mm;
+        font-size: 2.4em;
         display:flex;
         flex-direction:row;
         flex-grow: 1;
@@ -63,6 +63,8 @@
     {
         text-align: center;
         flex-grow: 1;
+        flex-shrink: 1;
+
     }
     .time
     {
