@@ -372,6 +372,7 @@
                 //console.debug("Sending speak:",text);
                 //console.debug("url",BASE);
                 //console.debug("has_key",has_key);
+                //console.debug("Origin",window.location.origin)
                 fetch(
                     BASE,
                     {
@@ -406,6 +407,10 @@
                     })
                 )
             }
+        }
+        else
+        {
+            console.debug("HAS URL is undefined.");
         }
     }
 
