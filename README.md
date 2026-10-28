@@ -43,6 +43,7 @@ ssh into device and
         - Not working.
             - After enabled, voice control state is set repeatedly.
             - Socket still isn't closing down...
-- [ ] Make photoprism URL, photoprism album, and HAS URL into environment variables (can just bundle in existing PhotoprismKey and HASKey commands)
-- [ ] Some kind of async problem with voice commands where if socket is refreshed during whisper streaming, it doesn't reset websocket.
+- [x] Make photoprism URL, photoprism album, and HAS URL into environment variables (can just bundle in existing PhotoprismKey and HASKey commands)
+- [x] Some kind of async problem with voice commands where if socket is refreshed during whisper streaming, it doesn't reset websocket.
     -  Seems like internal service isn't even handling requests after it fails? Probably need tokio select instead of a try join somewhere. Or need to loop the services individually to restart them after failure or something...
+- [ ] Application is running asynchronously but isn't using multiple cores. Not spawning enough tasks. Should probably spawn voice (whisper and wake word detection separately), internal, and external.
