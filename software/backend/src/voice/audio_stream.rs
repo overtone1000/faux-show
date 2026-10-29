@@ -102,7 +102,7 @@ pub fn get_voice_command_json_file_path(params:&InitializationParameters)->Strin
 pub async fn run_voice_command_listener(
     //wakeword_onnx_file:&str,
     //url:&str,
-    params:&InitializationParameters,
+    params:InitializationParameters,
     //external_command_sender:UnboundedSender<Command>,
     //mut internal_service_notification_receiver:Receiver<InternalServiceNotification>
     spoke:CommunicationSpoke
@@ -131,6 +131,7 @@ pub async fn run_voice_command_listener(
             }
         };
 
+        let spokeclone=spoke.clone();
         let handle=async {
             if voice_command_enabled
             {
@@ -138,14 +139,14 @@ pub async fn run_voice_command_listener(
                 voice_command_listener(
                     params.wakeword_onnx_file.clone(),
                     params.whisper_server_url.clone(),
-                    get_voice_command_json_file_path(params),
-                    spoke.clone()
+                    get_voice_command_json_file_path(&params),
+                    spokeclone
                 ).await
             }
             else
             {
                 println!("audio_stream.rs: Voice disabled. Sleeping voice.");
-                spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::NotEnabled));
+                spokeclone.send_external_command(Command::SetVoiceControlState(VoiceControlState::NotEnabled));
                 std::future::pending().await
             }
         };

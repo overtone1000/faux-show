@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use has_mqtt::{component::HomeAssistantDeviceComponent, device::HomeAssistantDeviceConfiguration, mqtt_client::{DEFAULT_DISCOVERY_PREFIX, HASMQTTClient}, platform::{switch::{component::Switch, state::SwitchState}, text::component::Text}};
 use hyper_util::server::conn::auto;
@@ -20,7 +20,7 @@ pub struct MQTTConfiguration
     pub discovery_prefix:String
 }
 
-pub async fn get_has_client(spoke:CommunicationSpoke, config:&MQTTConfiguration, kiosk_uid:u64)->HASMQTTClient
+pub async fn get_has_client(spoke:CommunicationSpoke, config:MQTTConfiguration, kiosk_uid:u64)->HASMQTTClient
 {
 
     let mut cmps_hm:HashMap<String,HomeAssistantDeviceComponent> = HashMap::new();
@@ -83,7 +83,7 @@ fn monitor_switch(
             device_name,
             "monitor",
             "Monitor",
-            Box::new(handle_state_change)
+            Arc::new(handle_state_change)
         )
     )
 }
@@ -118,7 +118,7 @@ fn auto_tab_set(
             device_name,
             "auto_tab",
             "Auto Tab",
-            Box::new(handle_state_change)
+            Arc::new(handle_state_change)
         )
     )
 }

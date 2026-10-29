@@ -18,7 +18,7 @@ use crate::comm::CommunicationHub;
 use crate::mqtt::MQTTConfiguration;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
-use crate::voice::audio_stream::{run_voice_command_listener};
+use crate::voice::audio_stream::{WakewordWhisperState, run_voice_command_listener};
 
 #[derive(Debug, Clone)]
 pub struct InitializationParameters
@@ -36,6 +36,16 @@ pub struct InitializationParameters
     whisper_server_url:String,
     wakeword_onnx_file:String
 }
+
+const _: () = {
+    const fn assert_send<T: Send>() {}
+    assert_send::<InitializationParameters>();
+    assert_send::<WakewordWhisperState>();
+    assert_send::<comm::CommunicationSpoke>();
+    assert_send::<has_mqtt::mqtt_client::HASMQTTClient>();
+    assert_send::<has_mqtt::component::HomeAssistantDeviceComponent>();
+    assert_send::<rumqttc::AsyncClient>();
+};
 
 impl InitializationParameters
 {
@@ -94,27 +104,51 @@ pub async fn start_and_run(params:InitializationParameters) {
         );
         let internal_service= StatefulService::create(internal_handler);  
 
-        let internal_service_future = internal_service.start(
-            IpAddr::V4(Ipv4Addr::LOCALHOST),
-            params.internal_port,
-            ConnectionProperties{
-                with_upgrades:true,
-                tls:None
-            }
-        );
+        let internal_service_future = {
+
+            tokio::spawn(
+                async move {
+                    internal_service.start(
+                        IpAddr::V4(Ipv4Addr::LOCALHOST),
+                        params.internal_port,
+                        ConnectionProperties{
+                            with_upgrades:true,
+                            tls:None
+                        }
+                    ).await
+                }
+            )
+        };
 
         let external_service_future = match generate_simple_certificates(["*".to_string()])
         {
             Ok(keypair)=>{
-                
+                //let paramsclone=params.clone();
+
+                /*
                 external_service.start(
                     IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    params.external_port,
+                    paramsclone.external_port,
                     ConnectionProperties{
                         with_upgrades:false,
                         tls:Some(keypair)
                     }                    
                 )
+                */
+                
+                tokio::spawn(
+                    async move {
+                        external_service.start(
+                            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                            params.external_port,
+                            ConnectionProperties{
+                                with_upgrades:false,
+                                tls:Some(keypair)
+                            }                    
+                        ).await
+                    }
+                )
+                
             },
             Err(e)=>{
                 panic!("Couldn't create certificates. {:?}",e);
@@ -122,15 +156,25 @@ pub async fn start_and_run(params:InitializationParameters) {
         };
 
 
-        let mqtt_client=mqtt::get_has_client(spoke.clone(), &params.mqtt_config, params.kiosk_uid).await;
-        let mqtt_client_future = mqtt_client.run();
+        let mqtt_client_future = {
+            let spokeclone=spoke.clone();
+            let paramsclone=params.clone();
+            tokio::spawn(async move{
+                let mqtt_client=mqtt::get_has_client(spokeclone, paramsclone.mqtt_config.clone(), paramsclone.kiosk_uid.clone()).await;
+                mqtt_client.run().await}
+            )
+        };
 
-        let voice_command_handle=run_voice_command_listener(
-            &params,
-            spoke
-        );
 
-        let hub_future=hub.start();
+        let voice_command_handle={
+            let paramsclone=params.clone();
+            tokio::spawn(async move{run_voice_command_listener(
+                paramsclone,
+                spoke
+            ).await})
+        };
+
+        let hub_future=tokio::spawn(async move{hub.start().await});
 
         println!("Services created.");
 
@@ -152,11 +196,11 @@ pub async fn start_and_run(params:InitializationParameters) {
         */
 
         let result=tokio::select! {
-            result=hub_future=>{eprintln!("Hub service ended."); result},
-            result=internal_service_future=>{eprintln!("Internal service ended."); result},
-            result=external_service_future=>{eprintln!("External service ended."); result},
-            result=mqtt_client_future=>{eprintln!("MQTT service ended."); result},
-            result=voice_command_handle=>{eprintln!("Voice service ended."); result},
+            result=hub_future=>{eprintln!("Hub service ended."); result.expect("Should join")},
+            result=internal_service_future=>{eprintln!("Internal service ended."); result.expect("Should join")},
+            result=external_service_future=>{eprintln!("External service ended."); result.expect("Should join")},
+            result=mqtt_client_future=>{eprintln!("MQTT service ended."); result.expect("Should join")},
+            result=voice_command_handle=>{eprintln!("Voice service ended."); result.expect("Should join")},
         };
 
         match result

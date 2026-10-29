@@ -47,3 +47,4 @@ ssh into device and
 - [x] Some kind of async problem with voice commands where if socket is refreshed during whisper streaming, it doesn't reset websocket.
     -  Seems like internal service isn't even handling requests after it fails? Probably need tokio select instead of a try join somewhere. Or need to loop the services individually to restart them after failure or something...
 - [ ] Application is running asynchronously but isn't using multiple cores. Not spawning enough tasks. Should probably spawn voice (whisper and wake word detection separately), internal, and external.
+    - Tried to make wakeword detection run separately but it clearly broke it!
