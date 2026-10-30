@@ -105,10 +105,11 @@ pub async fn start_and_run(params:InitializationParameters) {
         //Don't loop this. If the internal service goes down, need to rebuild entirely.
         let internal_service_future = {
             let spokeclone=spoke.clone();
+            let paramsclone=params.clone();
             tokio::spawn(
                 async move {
                     let internal_handler = InternalService::new(
-                        &params,
+                        &paramsclone,
                         std::sync::Arc::new(tokio::sync::Mutex::new(external_command_receiver)), //partial move of hub
                         spokeclone
                         //internal_service_notification_sender.clone()
@@ -116,7 +117,7 @@ pub async fn start_and_run(params:InitializationParameters) {
                     let internal_service= StatefulService::create(internal_handler);  
                     match internal_service.start(
                         IpAddr::V4(Ipv4Addr::LOCALHOST),
-                        (&params).internal_port.to_owned(),
+                        (&paramsclone).internal_port.to_owned(),
                         ConnectionProperties{
                             with_upgrades:true,
                             tls:None
