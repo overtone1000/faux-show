@@ -1,8 +1,8 @@
-use std::{borrow::Cow, time::Duration};
+use std::{borrow::Cow, sync::Arc, time::Duration};
 
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use serde::{Deserialize, Serialize};
-use tokio::{net::TcpStream, sync::{mpsc, oneshot, watch}};
+use tokio::{net::TcpStream, sync::{Mutex, mpsc, oneshot, watch}};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
 use crate::voice::audio_stream::WakewordWhisperState;
@@ -204,17 +204,29 @@ async fn whisper_client_loop<T>(
 
     let websocket_message_sender = 
     {
-        let control_closure = |c: &WakewordWhisperState|
-        {
-            let retval = !c.whisper_stream_enabled;
-            println!("whisper_streaming.rs: State change: {:?} - returning {}",c,retval);
-            retval
-        };
-
         async move {           
             let mut continue_websocket=true;
             while continue_websocket{
                 tokio::select!(
+                    _=whisper_client_control_receiver.changed()=>{
+
+                        //Can't use whisper_client_control_receiver with wait_for with closer because it makes this not implement Send
+                        let value = {
+                            let guard = whisper_client_control_receiver.borrow_and_update();
+                            guard.clone()
+                        };
+
+                        if !value.whisper_stream_enabled
+                        {
+                            continue_websocket=false;
+                            
+                            match write.close().await
+                            {
+                                Ok(_) => println!("whisper_streaming.rs: stream closed"),
+                                Err(e) => eprintln!("whisper_streaming.rs: {:?}",e),
+                            }
+                        }
+                    },
                     websocket_message=websocket_message_receiver.recv()=>{
                         match websocket_message
                         {
@@ -223,15 +235,7 @@ async fn whisper_client_loop<T>(
                             },
                             None=>()
                         };
-                    },
-                    _=whisper_client_control_receiver.wait_for(control_closure)=>{
-                        continue_websocket=false;
-                        match write.close().await
-                        {
-                            Ok(_) => println!("whisper_streaming.rs: stream closed"),
-                            Err(e) => eprintln!("whisper_streaming.rs: {:?}",e),
-                        }
-                    }
+                    }                    
                 );
                 
             }

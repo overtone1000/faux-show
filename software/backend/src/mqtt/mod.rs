@@ -20,7 +20,7 @@ pub struct MQTTConfiguration
     pub discovery_prefix:String
 }
 
-pub async fn get_has_client(spoke:CommunicationSpoke, config:MQTTConfiguration, kiosk_uid:u64)->HASMQTTClient
+pub async fn get_has_client(spoke:&CommunicationSpoke, config:&MQTTConfiguration, kiosk_uid:u64)->HASMQTTClient
 {
 
     let mut cmps_hm:HashMap<String,HomeAssistantDeviceComponent> = HashMap::new();
@@ -30,7 +30,7 @@ pub async fn get_has_client(spoke:CommunicationSpoke, config:MQTTConfiguration, 
     };
 
     add_cmp(monitor_switch(&config.id, &config.name, kiosk_uid, spoke.clone()));
-    add_cmp(auto_tab_set(&config.id, &config.name, spoke));
+    add_cmp(auto_tab_set(&config.id, &config.name, spoke.clone()));
 
     let device=HomeAssistantDeviceConfiguration::new(
         config.id.to_string(),

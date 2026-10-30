@@ -14,11 +14,11 @@ use hyper_services::service::certificates::generate_simple_certificates;
 use hyper_services::service::spawn::ConnectionProperties;
 use hyper_services::service::stateful_service::StatefulService;
 
-use crate::comm::CommunicationHub;
+use crate::comm::{CommunicationHub, CommunicationSpoke};
 use crate::mqtt::MQTTConfiguration;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
-use crate::voice::audio_stream::{WakewordWhisperState, run_voice_command_listener};
+use crate::voice::audio_stream::{WakewordWhisperState, spawn_voice_command_listener};
 
 #[derive(Debug, Clone)]
 pub struct InitializationParameters
@@ -43,8 +43,12 @@ const _: () = {
     assert_send::<WakewordWhisperState>();
     assert_send::<comm::CommunicationSpoke>();
     assert_send::<has_mqtt::mqtt_client::HASMQTTClient>();
+    assert_send::<&has_mqtt::mqtt_client::HASMQTTClient>();
     assert_send::<has_mqtt::component::HomeAssistantDeviceComponent>();
     assert_send::<rumqttc::AsyncClient>();
+    assert_send::<CommunicationSpoke>();
+    assert_send::<CommunicationHub>();
+    assert_send::<tokio::sync::watch::Sender<WakewordWhisperState>>();
 };
 
 impl InitializationParameters
@@ -82,6 +86,7 @@ impl InitializationParameters
 }
 
 pub async fn start_and_run(params:InitializationParameters) {
+
     loop {
         
         println!("Starting services.");
@@ -93,29 +98,34 @@ pub async fn start_and_run(params:InitializationParameters) {
         let spoke=hub.spoke().clone();
         //let (internal_service_notification_sender, internal_service_notification_receiver) = tokio::sync::broadcast::channel::<InternalServiceNotification>(10);
         
-        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid,hub.spoke().clone());
-        let external_service = StatefulService::create(external_handler);
-
-        let internal_handler = InternalService::new(
-            &params,
-            std::sync::Arc::new(tokio::sync::Mutex::new(external_command_receiver)), //partial move of hub
-            spoke.clone()
-            //internal_service_notification_sender.clone()
-        );
-        let internal_service= StatefulService::create(internal_handler);  
-
+        
+        let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid.to_owned(),hub.spoke().clone());
+        let external_service = StatefulService::create(external_handler);        
+        
+        //Don't loop this. If the internal service goes down, need to rebuild entirely.
         let internal_service_future = {
-
+            let spokeclone=spoke.clone();
             tokio::spawn(
                 async move {
-                    internal_service.start(
+                    let internal_handler = InternalService::new(
+                        &params,
+                        std::sync::Arc::new(tokio::sync::Mutex::new(external_command_receiver)), //partial move of hub
+                        spokeclone
+                        //internal_service_notification_sender.clone()
+                    );
+                    let internal_service= StatefulService::create(internal_handler);  
+                    match internal_service.start(
                         IpAddr::V4(Ipv4Addr::LOCALHOST),
-                        params.internal_port,
+                        (&params).internal_port.to_owned(),
                         ConnectionProperties{
                             with_upgrades:true,
                             tls:None
                         }
                     ).await
+                    {
+                        Ok(()) => println!("Internal service exited gracefully. Restarting immediately."),
+                        Err(e) => eprintln!("Internal service error: {:?}. Restarting immediately.",e)
+                    }
                 }
             )
         };
@@ -123,7 +133,7 @@ pub async fn start_and_run(params:InitializationParameters) {
         let external_service_future = match generate_simple_certificates(["*".to_string()])
         {
             Ok(keypair)=>{
-                //let paramsclone=params.clone();
+                let paramsclone=params.clone();
 
                 /*
                 external_service.start(
@@ -136,16 +146,21 @@ pub async fn start_and_run(params:InitializationParameters) {
                 )
                 */
                 
+                //Don't loop this. If the external service goes down, rebuild entirely.
                 tokio::spawn(
                     async move {
-                        external_service.start(
+                        match external_service.start(
                             IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                            params.external_port,
+                            paramsclone.external_port,
                             ConnectionProperties{
                                 with_upgrades:false,
                                 tls:Some(keypair)
                             }                    
                         ).await
+                        {
+                            Ok(()) => println!("Internal service exited gracefully. Restarting immediately."),
+                            Err(e) => eprintln!("Internal service error: {:?}. Restarting immediately.",e)
+                        }
                     }
                 )
                 
@@ -155,26 +170,50 @@ pub async fn start_and_run(params:InitializationParameters) {
             }
         };
 
-
         let mqtt_client_future = {
             let spokeclone=spoke.clone();
             let paramsclone=params.clone();
-            tokio::spawn(async move{
-                let mqtt_client=mqtt::get_has_client(spokeclone, paramsclone.mqtt_config.clone(), paramsclone.kiosk_uid.clone()).await;
-                mqtt_client.run().await}
+            tokio::spawn(
+                async move {
+                    loop {
+                        let client = mqtt::get_has_client(&spokeclone, &paramsclone.mqtt_config, paramsclone.kiosk_uid).await;
+                        match client.run().await
+                        {
+                            Ok(_) => {
+                                println!("Voice command listener ended gracefully. Restarting immediately.")
+                            },
+                            Err(e) => {
+                                eprintln!("Voice command listener error: {:?}. Restarting immediately.",e)
+                            },
+                        }
+                    }
+                }
             )
+            //tokio::spawn(async move{
+            //        let mqtt_client=mqtt::get_has_client(spokeclone, paramsclone.mqtt_config, paramsclone.kiosk_uid).await;
+            //        mqtt_client.run().await
+            //    }
+            //)
         };
 
-
-        let voice_command_handle={
+        let voice_command_task_join_handle=
+        {
+            let spokeclone=spoke.clone();
             let paramsclone=params.clone();
-            tokio::spawn(async move{run_voice_command_listener(
-                paramsclone,
-                spoke
-            ).await})
+            spawn_voice_command_listener(paramsclone,spokeclone)
         };
 
-        let hub_future=tokio::spawn(async move{hub.start().await});
+        let hub_future=tokio::spawn(
+            async move{
+                loop{
+                    match hub.start().await
+                    {
+                        Ok(()) => println!("Internal service exited gracefully. Restarting immediately."),
+                        Err(e) => eprintln!("Internal service error: {:?}. Restarting immediately.",e)
+                    }
+                }
+            }
+        );
 
         println!("Services created.");
 
@@ -195,17 +234,17 @@ pub async fn start_and_run(params:InitializationParameters) {
         }
         */
 
-        let result=tokio::select! {
-            result=hub_future=>{eprintln!("Hub service ended."); result.expect("Should join")},
-            result=internal_service_future=>{eprintln!("Internal service ended."); result.expect("Should join")},
-            result=external_service_future=>{eprintln!("External service ended."); result.expect("Should join")},
-            result=mqtt_client_future=>{eprintln!("MQTT service ended."); result.expect("Should join")},
-            result=voice_command_handle=>{eprintln!("Voice service ended."); result.expect("Should join")},
+        let result:Result<(), tokio::task::JoinError>=tokio::select! {
+            result=hub_future=>{eprintln!("Hub service ended."); result},
+            result=internal_service_future=>{eprintln!("Internal service ended."); result},
+            result=external_service_future=>{eprintln!("External service ended."); result},
+            result=mqtt_client_future=>{eprintln!("MQTT service ended."); result},
+            result=voice_command_task_join_handle=>{eprintln!("Voice service ended."); result},
         };
 
         match result
         {
-            Ok(())=>{println!("Ended gracefully.")}
+            Ok(_)=>{println!("Joined.")}
             Err(e)=>{eprintln!("{:?}",e)}
         };
     }

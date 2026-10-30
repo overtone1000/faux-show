@@ -1,4 +1,4 @@
-use std::{f64::consts::E, time::{Duration, SystemTime}};
+use std::{f64::consts::E, sync::Arc, time::{Duration, SystemTime}};
 
 use circular_buffer::CircularBuffer;
 use cpal::{StreamConfig, traits::{DeviceTrait, HostTrait, StreamTrait}};
@@ -53,7 +53,9 @@ impl std::error::Error for VoiceError{}
 fn get_state(voice_control_state_receiver:&mut watch::Receiver<WakewordWhisperState>)->WakewordWhisperState
 {
     //When getting state, it's best to clone the value to release the borrow, especially if subsequent async tasks are performed.
-    (*(voice_control_state_receiver.borrow_and_update())).clone()
+    //(*(voice_control_state_receiver.borrow_and_update())).clone()
+    //*(voice_control_state_receiver.borrow_and_update().clone())
+    voice_control_state_receiver.borrow_and_update().clone().clone()
 }
 
 fn set_state(state:WakewordWhisperState, 
@@ -99,12 +101,32 @@ pub fn get_voice_command_json_file_path(params:&InitializationParameters)->Strin
     params.config_static_directory.to_string() + "/voice_commands.json"
 }
 
-pub async fn run_voice_command_listener(
-    //wakeword_onnx_file:&str,
-    //url:&str,
+pub fn spawn_voice_command_listener(
     params:InitializationParameters,
-    //external_command_sender:UnboundedSender<Command>,
-    //mut internal_service_notification_receiver:Receiver<InternalServiceNotification>
+    spoke:CommunicationSpoke
+)->tokio::task::JoinHandle<()>
+{
+    tokio::spawn(
+        async move {
+            loop {
+                let paramsclone=params.clone();
+                let spokeclone=spoke.clone();
+                match run_voice_command_listener(paramsclone,spokeclone).await
+                {
+                    Ok(_) => {
+                        println!("Voice command listener ended gracefully. Restarting immediately.")
+                    },
+                    Err(e) => {
+                        eprintln!("Voice command listener error: {:?}. Restarting immediately.",e)
+                    },
+                }
+            }
+        }
+    )
+}
+
+async fn run_voice_command_listener(
+    params:InitializationParameters,
     spoke:CommunicationSpoke
 )->Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
