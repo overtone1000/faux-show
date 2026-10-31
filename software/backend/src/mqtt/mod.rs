@@ -29,7 +29,7 @@ pub async fn get_has_client(spoke:&CommunicationSpoke, config:&MQTTConfiguration
         cmps_hm.insert(kvp.0,kvp.1);
     };
 
-    add_cmp(monitor_switch(&config.id, &config.name, kiosk_uid, spoke.clone()));
+    add_cmp(device_awake_switch(&config.id, &config.name, kiosk_uid, spoke.clone()));
     add_cmp(auto_tab_set(&config.id, &config.name, spoke.clone()));
 
     let device=HomeAssistantDeviceConfiguration::new(
@@ -41,17 +41,19 @@ pub async fn get_has_client(spoke:&CommunicationSpoke, config:&MQTTConfiguration
     );
 
 
-    HASMQTTClient::start(
+    let client = HASMQTTClient::start(
         &config.client_id,
         &config.server_url,
         config.server_port,
         &config.discovery_prefix,
         &config.object_id,
         device
-    ).await
+    ).await;
+
+    client
 }
 
-fn monitor_switch(
+fn device_awake_switch(
     device_id:&str, 
     device_name:&str, 
     kiosk_uid:u64, 
@@ -70,19 +72,19 @@ fn monitor_switch(
         {
             Ok(_)=>Some(state),
             Err(e)=>{
-                eprintln!("Error setting screen state. {:?}",e);  
+                eprintln!("Error wake state. {:?}",e);  
                 None
             }
         }
     };
 
     (
-        "monitor".to_string(),
+        "device_awake".to_string(),
         Switch::new(
             device_id,
             device_name,
-            "monitor",
-            "Monitor",
+            "device_awake",
+            "Awake",
             Arc::new(handle_state_change)
         )
     )

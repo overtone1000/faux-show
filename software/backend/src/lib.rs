@@ -89,7 +89,7 @@ pub async fn start_and_run(params:InitializationParameters) {
 
     loop {
         
-        println!("Starting services.");
+        println!("Starting faux-show main loop.");
 
         //Command receiver doesn't implement clone so can't pass it in to a service.
         //let (external_command_sender, external_command_receiver) = tokio::sync::mpsc::unbounded_channel::<Command>();
@@ -177,14 +177,15 @@ pub async fn start_and_run(params:InitializationParameters) {
             tokio::spawn(
                 async move {
                     loop {
+                        println!("MQTT client starting.");
                         let client = mqtt::get_has_client(&spokeclone, &paramsclone.mqtt_config, paramsclone.kiosk_uid).await;
                         match client.run().await
                         {
                             Ok(_) => {
-                                println!("Voice command listener ended gracefully. Restarting immediately.")
+                                println!("MQTT client ended gracefully. Restarting immediately.")
                             },
                             Err(e) => {
-                                eprintln!("Voice command listener error: {:?}. Restarting immediately.",e)
+                                eprintln!("MQTT client error: {:?}. Restarting immediately.",e)
                             },
                         }
                     }
@@ -245,8 +246,8 @@ pub async fn start_and_run(params:InitializationParameters) {
 
         match result
         {
-            Ok(_)=>{println!("Joined.")}
-            Err(e)=>{eprintln!("{:?}",e)}
+            Ok(_)=>{println!("Faux-Show main loop joined gracefully.")}
+            Err(e)=>{eprintln!("Faux-Show main thread joined in error: {:?}",e)}
         };
     }
 }
