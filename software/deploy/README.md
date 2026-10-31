@@ -36,6 +36,11 @@ bash ./software/deploy/scripts/02_build_frontend.sh
 bash ./software/deploy/scripts/03_push_to_device.sh
 ```
 
+Full update
+```
+bash ./software/deploy/scripts/01_build_backend.sh & bash ./software/deploy/scripts/02_build_frontend.sh && bash ./software/deploy/scripts/03_push_to_device.sh
+```
+
 ### Restart after backend update
 
 This is the manual cmomand, but it's already in push to device script.

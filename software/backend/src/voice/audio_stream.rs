@@ -137,19 +137,24 @@ async fn run_voice_command_listener(
         println!("audio_stream.rs: Outer loop starting.");
 
         let internal_state_voice_command_enabled = async {
-            //match internal_service_notification_receiver.recv().await
-            match state_receiver.changed().await
+            loop
             {
-                Ok(()) => {
-                    let state = state_receiver.borrow();
-                    let retval =state.front_end_connected && !state.sleeping;
-                    println!("audio_stream.rs: State updated. Front end connected: {}. Sleeping: {}. Audio enabled: {}",state.front_end_connected,state.sleeping,retval);
-                    retval
-                },
-                Err(e) => {
-                    eprintln!("audio_stream.rs: {:?}",e);
-                    false
-                },
+                match state_receiver.changed().await
+                {
+                    Ok(()) => {
+                        let state = state_receiver.borrow();
+                        let retval =state.front_end_connected && !state.sleeping;
+                        println!("audio_stream.rs: State updated. Front end connected: {}. Sleeping: {}. Audio enabled: {}",state.front_end_connected,state.sleeping,retval);
+                        if voice_command_enabled!=retval
+                        {
+                            return retval;
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("audio_stream.rs: {:?}",e);
+                        return false;
+                    },
+                }
             }
         };
 
