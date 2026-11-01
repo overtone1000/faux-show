@@ -1,3 +1,4 @@
+use futures_util::SinkExt;
 use serde::{Deserialize, Serialize};
 use text2num::find_numbers;
 
@@ -133,7 +134,59 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
     let millis_per_hour= millis_per_minute*60.0;
 
     let mut millis:f64=0.0;
-    let occurrences = find_numbers(match_result.remaining_tokens.clone().into_iter(), &(text2num::Language::english()), 0.0);
+
+    println!("text_manip.rs: Raw tokens: {:?}",match_result.remaining_tokens);
+
+    let cleaned_tokens={
+        let mut ret:Vec<LivekitTranscriptionWord>=Vec::with_capacity(match_result.remaining_tokens.len());
+        for mut token in match_result.remaining_tokens
+        {
+            token.word=clean_tsword(&token);
+            ret.push(token);
+        }
+        ret
+    };
+
+    println!("text_manip.rs: Cleaned tokens: {:?}",cleaned_tokens);
+
+
+    let occurrences = {
+        let mut retval:Vec<text2num::Occurence>=Vec::new();
+        let tokens= cleaned_tokens.clone();
+        print!("text_manip.rs: Cleaned tokens:");
+        for n in 0..tokens.len() 
+        {
+            let token=tokens.get(n).expect("Should exist!");
+            match token.word.as_str().parse::<f64>()
+            {
+                Ok(result)=>{
+                    let occ = text2num::Occurence{
+                        start: n,
+                        end: n+1,
+                        text: token.word.clone(),
+                        value: result,
+                        is_ordinal: false,
+                    };
+                    retval.push(occ);
+                },
+                Err(_e)=>()
+            };
+        }
+        println!();
+
+        retval.append(&mut find_numbers(cleaned_tokens.clone().into_iter(), &(text2num::Language::english()), 0.0));
+
+        retval.sort_by(
+            |one, two|
+            {
+                one.start.cmp(&two.start)
+            }
+        );
+
+        retval
+    };
+
+    println!("text_manip.rs: Occurences: {:?}",occurrences);
 
     let name ={
         if occurrences.len()>0
@@ -143,7 +196,7 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
 
             for n in 0..occurrences.get(0).expect("Should exist.").start
             {
-                retval+=&match_result.remaining_tokens.get(n).expect("Should exist.").word;
+                retval+=&cleaned_tokens.get(n).expect("Should exist.").word;
             }
 
             retval
@@ -152,8 +205,6 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
             "Unnamed Timer".to_string()
         }
     };
-
-    println!("text_manip.rs: {:?}",occurrences);
 
     for n in 0..occurrences.len()
     {
@@ -174,19 +225,19 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
                 next_occurence.start
             }
             else {
-                match_result.remaining_tokens.len()
+                cleaned_tokens.len()
             }
         };
 
         let mut subvec:Vec<String> = Vec::with_capacity(end-start);
         for n in start..end
         {
-            let word = match match_result.remaining_tokens.get(n)
+            let word = match cleaned_tokens.get(n)
             {
                 Some(o)=>{
                     clean_tsword(o) //lower case, remove white space, and remove punctuation for comparisons below
                 },
-                None=>{eprintln!("Bad get 3 Trying to get {}, length {}.",n,match_result.remaining_tokens.len()); return None;}
+                None=>{eprintln!("Bad get 3 Trying to get {}, length {}.",n,cleaned_tokens.len()); return None;}
             };
             subvec.push(word);
         }

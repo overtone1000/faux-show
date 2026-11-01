@@ -303,7 +303,7 @@ async fn voice_command_listener(
 
     let mut audio_buffer = CircularBuffer::<AUDIO_BUFFER_SIZE,i16>::new();
     
-    let duration_to_stream_to_whisper_after_detection:Duration = Duration::from_secs(10);
+    let duration_to_stream_to_whisper_after_detection:Duration = Duration::from_secs(15);
     
     //let mut stream_to_whisper = false;
     //let mut last_detection:Option<SystemTime>=None;

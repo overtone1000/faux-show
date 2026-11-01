@@ -293,6 +293,7 @@
 
         if(command.NewTimer)
         {
+            command.NewTimer.millis+=Date.now(); //Server just supplies how much time is left on timer. Always need to add current millis.
             new_full_timer_from_timer(command.NewTimer,timers);
         }
     }

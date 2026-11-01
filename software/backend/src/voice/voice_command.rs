@@ -189,7 +189,7 @@ mod tests {
         let (hub, _receiver)=crate::comm::CommunicationHub::new();
 
         let segments = vec![
-            LivekitTranscriptionSegment::create_synthetic("Timer. Test timer, two minutes. Engage.")
+            LivekitTranscriptionSegment::create_synthetic("timer one  minute,  15  seconds.  Engage.", 1000f32)
         ];
 
         vcl.check_for_match_and_run_best_match(

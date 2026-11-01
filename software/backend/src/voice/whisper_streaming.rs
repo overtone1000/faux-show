@@ -57,6 +57,7 @@ impl Serialize for FloatString
 impl FloatString
 {
     pub fn new(value:f32)->FloatString{FloatString{value}}
+    pub fn get(&self)->f32{self.value}
 }
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
@@ -108,23 +109,26 @@ pub struct LivekitTranscriptionMessage
 
 impl LivekitTranscriptionSegment
 {
-    pub fn create_synthetic(text:&str)->LivekitTranscriptionSegment
+    pub fn create_synthetic(text:&str, word_length:f32)->LivekitTranscriptionSegment
     {
         let tokens:Vec<&str>=text.split(" ").collect();
-        let word_length=100.0f32;
+        //let word_length=0.900f32; //900 ms per word
 
         let mut words:Vec<LivekitTranscriptionWord> = Vec::new();
         let mut end=0.0;
         for token in tokens
         {
-            let start=end.clone();
-            end=end+word_length;
-            words.push(LivekitTranscriptionWord{ 
-                word: token.to_string(),
-                start: crate::voice::whisper_streaming::FloatString::new(start),
-                end: crate::voice::whisper_streaming::FloatString::new(end),
-                probability: 0.9                
-            });
+            if token!=""
+            {
+                let start=end.clone();
+                end=end+word_length;
+                words.push(LivekitTranscriptionWord{ 
+                    word: token.trim().to_string(),
+                    start: crate::voice::whisper_streaming::FloatString::new(start),
+                    end: crate::voice::whisper_streaming::FloatString::new(end),
+                    probability: 0.9                
+                });
+            }
         }
 
         LivekitTranscriptionSegment{ 
