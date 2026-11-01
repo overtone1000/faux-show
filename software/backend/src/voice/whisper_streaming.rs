@@ -21,7 +21,7 @@ struct LivekitConfig
 }
 
 #[derive(Debug,Clone)]
-struct FloatString
+pub struct FloatString
 {
     value:f32
 }

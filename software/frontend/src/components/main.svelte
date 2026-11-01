@@ -9,7 +9,7 @@
 	import Slideshow from './slideshow.svelte';
 	import IconSvg from './icon_svg.svelte';
 	import TimerPage from './timer_page.svelte';
-	import { all_timers_from_serial, all_timers_to_serial, update_extended_states, type AllTimers } from '$lib/timer_ext';
+	import { all_timers_from_serial, all_timers_to_serial, new_full_timer_from_timer, update_extended_states, type AllTimers } from '$lib/timer_ext';
 	import IconButton from './icon_button.svelte';
 	  
     //Hook console;
@@ -216,6 +216,7 @@
     let has_url=$state<string|undefined>(undefined);
     let voice_control_state=$state<VoiceControlState>(VoiceControlState.NotEnabled);
     let voice_control_options=$state<VoiceControlOptions>({commands:[]});
+    let voice_transcription_stream=$state<String>("");
     function handle_server_command(command:Command)
     {
         console.debug("Handling command.");
@@ -264,6 +265,11 @@
         if(command.SetVoiceControlState)
         {
             voice_control_state=command.SetVoiceControlState as VoiceControlState;
+
+            if(voice_control_state!=VoiceControlState.StreamingToWhisper)
+            {
+                voice_transcription_stream="";
+            }
         }
 
         if(command.AcknowledgeAlarms)
@@ -278,6 +284,16 @@
             }
             timers=timers_to_preserve;
             save_timers();
+        }
+
+        if(command.VoiceControlCurrentStream)
+        {
+            voice_transcription_stream=command.VoiceControlCurrentStream;
+        }
+
+        if(command.NewTimer)
+        {
+            new_full_timer_from_timer(command.NewTimer,timers);
         }
     }
 
@@ -648,6 +664,10 @@
                     {voice_option}
                 </div>
                 {/each}
+            </div>
+        {:else if voice_control_state==VoiceControlState.StreamingToWhisper}
+            <div class="overlay voice_instructions">
+                {voice_transcription_stream}
             </div>
         {/if}
     </div>

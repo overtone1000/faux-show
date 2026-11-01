@@ -505,15 +505,22 @@ async fn voice_command_listener(
             {
                 Some(segments)=>{
                     println!("audio_stream.rs: There are {} segments.",&segments.len());
+                    let mut full_transcription:String="".to_string();
                     for segment in &segments
                     {
+                        /*
                         let c=match segment.completed
                         {
                             true=>"Completed",
                             false=>"Incomplete"
                         };
-                        println!("audio_stream.rs:    {}:{}",c,segment.text);
+                        */
+                        //println!("audio_stream.rs:    {}:{}",c,segment.text);
+                        full_transcription+=&segment.text;
+                        full_transcription+=" ";
                     }
+
+                    spoke_clone.send_external_command(Command::VoiceControlCurrentStream(full_transcription));
 
                     let finished=voice_command_list.check_for_match_and_run_best_match(&segments, &spoke_clone);
                     if finished

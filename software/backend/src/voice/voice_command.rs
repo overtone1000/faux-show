@@ -88,10 +88,12 @@ impl VoiceCommand
                 }
             },
             VoiceCommandMode::Timer => {
-                //doesn't use action
-                //need to parse out name and time from timer
-                eprintln!("Need to do more here!");
-                extract_timer_init(match_result);
+                eprintln!("This may work but never has enough of the stream because it's stopped after the match!");
+                match extract_timer_init(match_result)
+                {
+                    Some(timer)=>spoke.send_external_command(Command::NewTimer(timer)),
+                    None=>false
+                };
             },
         }
     }
@@ -109,6 +111,7 @@ impl VoiceCommandMode
                 check_for_match_string(match_string.to_string(),segments)
             },
             VoiceCommandMode::Timer => {
+                println!("voice_command.rs: Checking for timer match.");
                 check_for_match_string("timer".to_string(),segments)
             },
         }

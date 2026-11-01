@@ -51,9 +51,14 @@ export function update_extended_states(nowdate:Date, timers:AllTimers)
     }
 }
 
-export function new_timer(name:string, input:TimerInput, timers:AllTimers)
+export function new_timer_from_timerinput(name:string, input:TimerInput, timers:AllTimers)
 {
     const timer:Timer = timer_input_to_running_timer(name,input);
+    new_full_timer_from_timer(timer,timers);
+}
+
+export function new_full_timer_from_timer(timer:Timer, timers:AllTimers)
+{
     const nowdate=new Date();
     const now=nowdate.valueOf();
     timers.push({

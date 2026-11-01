@@ -1,3 +1,5 @@
+import type { Timer } from "./timer";
+
 export type Initialization =
 {
     photoprism_key:string,
@@ -49,4 +51,6 @@ export type Command = {
     SetVoiceControlState?:VoiceControlState,
     AcknowledgeAlarms?:boolean,
     VoiceControlOptions?:VoiceControlOptions
+    VoiceControlCurrentStream?:String,
+    NewTimer?:Timer
 }

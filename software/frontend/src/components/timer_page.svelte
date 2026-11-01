@@ -4,7 +4,7 @@
 	import TimeInput from "./time_input.svelte";
 	import { get_empty_timer, timer_input_to_running_timer, type TimerInput } from "$lib/timer_input";
 	import { pause_timer, resume_timer } from "$lib/timer";
-	import { new_timer, type AllTimers } from "$lib/timer_ext";
+	import { new_timer_from_timerinput, type AllTimers } from "$lib/timer_ext";
 
     type Props =
     {
@@ -25,7 +25,7 @@
     {
         console.debug("Saving timer.");
         const name = "Timer " + (timers.length+1);
-        new_timer(name,new_timer_input,timers);
+        new_timer_from_timerinput(name,new_timer_input,timers);
         save_timers();
         show_add_display=false;
     } 

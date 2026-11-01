@@ -2,7 +2,7 @@ use std::vec;
 
 use serde::{Deserialize, Serialize, de::Visitor};
 
-use crate::voice::voice_command::VoiceCommandList;
+use crate::voice::{text_manip::Timer, voice_command::VoiceCommandList};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct ChangeDashData {url:String}
@@ -91,7 +91,9 @@ pub enum Command
     SetScreenState(bool), //Tell frontend to render a simple display
     SetVoiceControlState(VoiceControlState), //Tell frontend voice control state,
     AcknowledgeAlarms(bool), //Acknowledge alarms
-    VoiceControlOptions(VoiceCommandList)
+    VoiceControlOptions(VoiceCommandList),
+    VoiceControlCurrentStream(String),
+    NewTimer(Timer)
 }
 
 #[cfg(test)]

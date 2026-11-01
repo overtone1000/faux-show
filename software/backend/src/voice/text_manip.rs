@@ -1,8 +1,11 @@
+use serde::{Deserialize, Serialize};
+use text2num::find_numbers;
+
 use crate::voice::whisper_streaming::{LivekitTranscriptionSegment, LivekitTranscriptionWord};
 
 pub fn clean_tsword(tsword:&LivekitTranscriptionWord)->String
 {
-    tsword.word.to_lowercase().trim().trim_matches(['?','!','.']).to_string()
+    tsword.word.to_lowercase().trim().trim_matches(['?','!','.',',']).to_string()
 }
 
 pub fn clean_match_string_into_words(match_string:String)->Vec<String>
@@ -45,6 +48,7 @@ pub fn check_for_match_string(match_string:String, segments:&Vec<LivekitTranscri
                                 //println!("   current_word: \"{}\"", current_word);
                                 let tsword_cleaned = clean_tsword(tsword);
                                 //println!("   tsword_cleaned: \"{}\"", tsword_cleaned);
+                                println!("     comparing {} and {}",current_word,tsword_cleaned);
                                 if tsword_cleaned == *current_word
                                 {
                                     println!("Match!");
@@ -94,18 +98,103 @@ pub fn concat_words(words:&[String])->String{
     retval.to_string()
 }
 
-pub fn extract_timer_init(match_result:MatchResult)
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct Timer
+{
+    name:String,
+    millis:u32,
+    paused:bool
+}
+pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
 {
     eprintln!("Need to extract timer info from token stream here");
 
-    let possible_units = [
-        "hour",
-        "hours",
-        "minute",
-        "minutes",
-        "second",
-        "seconds"
-    ];
+    let hour = &"hour".to_string();
+    let hours = &"hours".to_string();
+    let minute = &"minute".to_string();
+    let minutes = &"minutes".to_string();
+    let second = &"second".to_string();
+    let seconds = &"seconds".to_string();
+
+    let millis_per_second = 1000.0;
+    let millis_per_minute = millis_per_second*60.0;
+    let millis_per_hour= millis_per_minute*60.0;
+
+
+    let mut millis:f64=0.0;
+    let occurrences = find_numbers(match_result.remaining_tokens.clone().into_iter(), &(text2num::Language::english()), 0.0);
+
+    let name ={
+        if occurrences.len()>0
+        {
+            //Make the name everything before the first number
+            let mut retval="".to_string();
+
+            for n in 0..occurrences.get(0).expect("Should exist.").start
+            {
+                retval+=&match_result.remaining_tokens.get(n).expect("Should exist.").word;
+            }
+
+            retval
+        }
+        else {
+            "Unnamed Timer".to_string()
+        }
+    };
+
+    for n in 0..occurrences.len()-1
+    {
+        let occurence=match occurrences.get(n){
+            Some(o)=>o,
+            None=>{eprintln!("Bad get 1"); return None;}
+        };
+
+        let start = occurence.end;
+        
+        let end = {
+            if n<occurrences.len()-1
+            {
+                let next_occurence=match occurrences.get(n+1){
+                    Some(o)=>o,
+                    None=>{eprintln!("Bad get 2"); return None;}
+                };
+                next_occurence.start
+            }
+            else {
+                match_result.remaining_tokens.len()
+            }
+        };
+
+        let mut subvec:Vec<String> = Vec::with_capacity(end-start);
+        for n in start..end
+        {
+            let word = match match_result.remaining_tokens.get(n)
+            {
+                Some(o)=>o.word.clone(),
+                None=>{eprintln!("Bad get 3"); return None;}
+            };
+            subvec.push(word);
+        }
+
+        if subvec.contains(hour) || subvec.contains(hours)
+        {
+            millis+=occurence.value*millis_per_hour;
+        }
+        else if subvec.contains(minute) || subvec.contains(minutes)
+        {
+            millis+=occurence.value*millis_per_minute;
+        }
+        else if subvec.contains(second) || subvec.contains(seconds)
+        {
+            millis+=occurence.value*millis_per_second;
+        }
+    }
+
+    Some(Timer { 
+        name: name,
+        millis: millis as u32,
+        paused: false
+    })
 
     /*
     let mut continue_checking=num_sentence.len()>0;

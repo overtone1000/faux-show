@@ -61,7 +61,13 @@ impl ExternalService {
             },
             Command::VoiceControlOptions(_)=>{
                 eprintln!("Invalid command.");
-            }
+            },
+            Command::NewTimer(_timer) => {
+                eprintln!("Invalid command.");
+            },
+            Command::VoiceControlCurrentStream(_) => {
+                eprintln!("Invalid command.");
+            },
         }
 
         Ok(())
