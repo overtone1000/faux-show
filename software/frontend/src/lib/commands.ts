@@ -36,12 +36,15 @@ export type VoiceControlAction =
     AcknowledgeAlarms?:string
 }
 
+export type GenericVoiceControlOption =
+{
+    mode:VoiceControlMode|"Timer",
+    action?:VoiceControlAction
+}
+
 export type VoiceControlOptions =
 {
-    commands:{
-        mode:VoiceControlMode,
-        action:VoiceControlAction
-    }[]
+    commands:GenericVoiceControlOption[]
 }
 
 export type Command = {

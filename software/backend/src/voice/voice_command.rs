@@ -67,8 +67,8 @@ impl VoiceCommandList {
             Some((best_command,best_match))=>
             {
                 println!("Best match with score {}: {:?}",best_match.score,best_command);
-                best_command.run(spoke, best_match);
-                true //Matched, return true
+                //Matched, return result of run
+                best_command.run(spoke, best_match)
             },
             None=>false //No match, return false
         }
@@ -78,22 +78,23 @@ impl VoiceCommandList {
 impl VoiceCommand
 {
     
-    pub fn run(&self, spoke:&CommunicationSpoke, match_result:MatchResult){
+    pub fn run(&self, spoke:&CommunicationSpoke, match_result:MatchResult)->bool{
         match &self.mode
         {
             VoiceCommandMode::Contains(_) => {
                 match &self.action{
                     Some(action) => action.run(spoke),
-                    None => eprintln!("Not yet implemented."),
+                    None => false,
                 }
             },
             VoiceCommandMode::Timer => {
-                eprintln!("This may work but never has enough of the stream because it's stopped after the match!");
                 match extract_timer_init(match_result)
                 {
-                    Some(timer)=>spoke.send_external_command(Command::NewTimer(timer)),
+                    Some(timer)=>{
+                        spoke.send_external_command(Command::NewTimer(timer))
+                    },
                     None=>false
-                };
+                }
             },
         }
     }
@@ -112,7 +113,14 @@ impl VoiceCommandMode
             },
             VoiceCommandMode::Timer => {
                 println!("voice_command.rs: Checking for timer match.");
-                check_for_match_string("timer".to_string(),segments)
+                //Command is "timer $NAME blah hours blah minutes blah seconds engage"
+                if check_for_match_string("engage".to_string(),segments).is_some()
+                {
+                    check_for_match_string("timer".to_string() ,segments)
+                }
+                else {
+                    None
+                }
             },
         }
     }
@@ -120,7 +128,7 @@ impl VoiceCommandMode
 
 impl VoiceCommandAction
 {
-    fn run(&self, spoke:&CommunicationSpoke){
+    fn run(&self, spoke:&CommunicationSpoke)->bool{
         match self
         {
             VoiceCommandAction::OpenPage(url) => {
@@ -132,12 +140,12 @@ impl VoiceCommandAction
                             timeout_seconds:5*60
                         }                        
                     )
-                );
+                )
             },
             VoiceCommandAction::AcknowledgeAlarms(ack) => {
                 spoke.send_external_command(
                     Command::AcknowledgeAlarms(*ack)
-                );
+                )
             },
         }
     }
@@ -165,5 +173,28 @@ mod tests {
         println!("{}",serialized);
         let deserialized = serde_json::from_str::<VoiceCommandList>(&serialized).expect("Should deserialize.");
         assert_eq!(test_commands,deserialized);
+    }
+
+    #[test]
+    fn voice_timer(){
+        let vct = VoiceCommand{
+            mode:VoiceCommandMode::Timer,
+            action:None
+        };
+
+        let vcl=VoiceCommandList{
+            commands:vec![vct]
+        };
+
+        let (hub, _receiver)=crate::comm::CommunicationHub::new();
+
+        let segments = vec![
+            LivekitTranscriptionSegment::create_synthetic("Timer. Test timer, two minutes. Engage.")
+        ];
+
+        vcl.check_for_match_and_run_best_match(
+            &segments,
+            hub.spoke()
+        );
     }
 }

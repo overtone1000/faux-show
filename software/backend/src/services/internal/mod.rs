@@ -338,6 +338,11 @@ impl StatefulHandler for InternalService {
                             
                             hyper_services::response_building::send_file(&self.initialization_parameters.config_static_directory,final_path,None).await
                         }
+                        //else if parts.uri.path() == "test" {
+                        //    //for running tests in development
+                        //    self.spoke
+                        //    Ok(hyper_services::response_building::ok())
+                        //}
                         else {
                             //println!("internal/mod.rs: Serving base.");
                             hyper_services::response_building::send_file(&self.initialization_parameters.internal_service_static_directory,parts.uri.path(),None).await

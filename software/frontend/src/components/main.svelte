@@ -581,20 +581,30 @@
             let retval:string[]=[];
             for(const vco of voice_control_options.commands)
             {
-                let this_row="";
-                if(vco.mode.Contains)
+                if(vco.mode === "Timer")
                 {
-                    this_row="\"" + vco.mode.Contains + "\"";   
+                    retval.push("Start a timer by saying, \"Timer NAME, # hours, # minutes, # seconds. Engage.\"")
                 }
-                if(vco.action.OpenPage !== undefined)
-                {
-                    this_row+=" will open " + vco.action.OpenPage;
+                else
+                {                   
+                    let this_row="";
+                    if(vco.mode.Contains)
+                    {
+                        this_row="\"" + vco.mode.Contains + "\"";   
+                    }
+                    if(vco.action)
+                    {
+                        if(vco.action.OpenPage)
+                        {
+                            this_row+=" will open " + vco.action.OpenPage;
+                        }
+                        else if(vco.action.AcknowledgeAlarms)
+                        {
+                            this_row+=" will acknowledge alarms."
+                        }
+                        retval.push(this_row);
+                    }
                 }
-                else if(vco.action.AcknowledgeAlarms !== undefined)
-                {
-                    this_row+=" will acknowledge alarms."
-                }
-                retval.push(this_row);
             }
             return retval;
         }

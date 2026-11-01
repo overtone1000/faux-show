@@ -5,7 +5,7 @@ use crate::voice::whisper_streaming::{LivekitTranscriptionSegment, LivekitTransc
 
 pub fn clean_tsword(tsword:&LivekitTranscriptionWord)->String
 {
-    tsword.word.to_lowercase().trim().trim_matches(['?','!','.',',']).to_string()
+    tsword.word.to_lowercase().trim().trim_matches(['?','!','.',',',';']).to_string()
 }
 
 pub fn clean_match_string_into_words(match_string:String)->Vec<String>
@@ -22,6 +22,7 @@ pub fn clean_match_string_into_words(match_string:String)->Vec<String>
 pub struct MatchResult
 {
     pub score:f32,
+    pub complete:bool,
     pub remaining_tokens:Vec<LivekitTranscriptionWord>
 }
 
@@ -34,6 +35,18 @@ pub fn check_for_match_string(match_string:String, segments:&Vec<LivekitTranscri
     let mut scores:Vec<f32>=Vec::new();
     
     let mut current_match_word_index=0;
+
+    let complete = {
+        let mut complete = true;
+        for segment in segments
+        {
+            if !segment.completed{
+                complete=false;
+                break;
+            }
+        }
+        complete
+    };
 
     for segment in segments
     {
@@ -71,7 +84,8 @@ pub fn check_for_match_string(match_string:String, segments:&Vec<LivekitTranscri
                                         
                                         return Some(MatchResult{
                                                 score:f32::powf(scores.iter().product(),1.0/(scores.len() as f32)),
-                                                remaining_tokens
+                                                remaining_tokens,
+                                                complete
                                             }
                                         );
                                     }
@@ -107,8 +121,6 @@ pub struct Timer
 }
 pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
 {
-    eprintln!("Need to extract timer info from token stream here");
-
     let hour = &"hour".to_string();
     let hours = &"hours".to_string();
     let minute = &"minute".to_string();
@@ -119,7 +131,6 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
     let millis_per_second = 1000.0;
     let millis_per_minute = millis_per_second*60.0;
     let millis_per_hour= millis_per_minute*60.0;
-
 
     let mut millis:f64=0.0;
     let occurrences = find_numbers(match_result.remaining_tokens.clone().into_iter(), &(text2num::Language::english()), 0.0);
@@ -142,11 +153,13 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
         }
     };
 
-    for n in 0..occurrences.len()-1
+    println!("text_manip.rs: {:?}",occurrences);
+
+    for n in 0..occurrences.len()
     {
         let occurence=match occurrences.get(n){
             Some(o)=>o,
-            None=>{eprintln!("Bad get 1"); return None;}
+            None=>{eprintln!("Bad get 1. Trying to get {}, length {}.",n,occurrences.len()); return None;}
         };
 
         let start = occurence.end;
@@ -156,7 +169,7 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
             {
                 let next_occurence=match occurrences.get(n+1){
                     Some(o)=>o,
-                    None=>{eprintln!("Bad get 2"); return None;}
+                    None=>{eprintln!("Bad get 2. Trying to get {}, length {}.",n+1,occurrences.len()); return None;}
                 };
                 next_occurence.start
             }
@@ -170,11 +183,15 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
         {
             let word = match match_result.remaining_tokens.get(n)
             {
-                Some(o)=>o.word.clone(),
-                None=>{eprintln!("Bad get 3"); return None;}
+                Some(o)=>{
+                    clean_tsword(o) //lower case, remove white space, and remove punctuation for comparisons below
+                },
+                None=>{eprintln!("Bad get 3 Trying to get {}, length {}.",n,match_result.remaining_tokens.len()); return None;}
             };
             subvec.push(word);
         }
+
+        println!("text_manip.rs: subvec {:?}",subvec);
 
         if subvec.contains(hour) || subvec.contains(hours)
         {
@@ -190,11 +207,24 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
         }
     }
 
-    Some(Timer { 
-        name: name,
-        millis: millis as u32,
-        paused: false
-    })
+    println!("text_manip.rs: millis={}",millis);
+    let millis:u32=millis as u32;
+
+    if millis>0
+    {
+        let retval=
+        Some(Timer { 
+            name: name,
+            millis: millis,
+            paused: false
+        });
+        println!("text_manip.rs: New timer: {:?}",retval);
+        retval
+    }
+    else {
+        println!("Millis<0, returning");
+        None        
+    }
 
     /*
     let mut continue_checking=num_sentence.len()>0;
