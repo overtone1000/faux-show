@@ -482,6 +482,8 @@
 
     // Timer State
     const timer_storage_key="timers";
+    const TIMER_NOTIFICATION_PERIOD=10000;
+
     let time=$state(new Date());
     let update_time_id:number|undefined=undefined;
     function update_time()
@@ -493,7 +495,7 @@
     let update_announcement_id:number|undefined=undefined;
     function timer_finished_announcement()
     {
-        console.debug("Callback running.");
+        console.debug("timer_finished_announcement running");
 
         let expired_names:string[] = [];
         for(const full_timer of timers)
@@ -508,6 +510,7 @@
 
         if(expired_names.length>0)
         {
+            console.debug(expired_names.length + " expired timers.");
             if(expired_names.length>1)
             {
                 let speech="";
@@ -522,12 +525,14 @@
             {
                 speak(expired_names[0] + " is done.");
             }
-        
-            update_announcement_id=setTimeout(timer_finished_announcement, 10000);
+
+            update_announcement_id=setTimeout(timer_finished_announcement,TIMER_NOTIFICATION_PERIOD); //Announce again in 10 seconds
         }
         else
         {
             clearTimeout(update_announcement_id);
+            update_announcement_id=undefined;
+            console.info("Clearing timeout.",update_announcement_id);
         }
     }
 
@@ -550,31 +555,52 @@
         clearTimeout(update_announcement_id);
     }
 
-    $effect(
-        ()=>{
-            console.info("Updating extended states.");
-            update_extended_states(time, timers);
-            //setTimeout(timer_finished_announcement);
-        }
-    );
-
-    $effect(
-        ()=>{
-            //If update announcement isn't running, check if any timers are expired and restart.
+    {
+        function monitor_expired_timers()
+        {
             if(!update_announcement_id)
             {
-                for(const full_timer of timers)
+                if(timers.length>0)
                 {
-                    if(full_timer.state.expired)                
+                    let timeout=Number.POSITIVE_INFINITY;
+                    for(const full_timer of timers)
                     {
-                        console.info("Expired timer found, calling callback.");
-                        setTimeout(timer_finished_announcement);
-                        break;
+                        if(full_timer.state.expired)                
+                        {   
+                            console.info("Expired timer found, calling callback.");
+                            timeout=0;
+                            break;
+                        }
+                        else{
+                            let time_left=full_timer.state.end_date.valueOf()-Date.now();
+                            console.info("Time left for timer is ",time_left);
+                            if(timeout>time_left){
+                                timeout=time_left;
+                            }
+                        }
                     }
-                }   
+                    if(timeout<TIMER_NOTIFICATION_PERIOD) //Don't schedule an announcement too far in advance.
+                    {
+                        update_announcement_id=setTimeout(timer_finished_announcement,timeout+10);
+                    }
+                }
+            }
+            else
+            {
+                console.info("Update scheduled, skipping monitoring.");
             }
         }
-    )
+
+        $effect(
+            ()=>{
+                //When time or timers changes, update extended states and check for expired timers.
+                update_extended_states(time, timers);
+                monitor_expired_timers();
+            }
+        );
+    }
+
+    
 
     const save_timers = () =>
     {
