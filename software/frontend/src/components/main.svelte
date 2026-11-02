@@ -337,13 +337,14 @@
 
         if(command.NewTimer)
         {
+            set_manual_tab(clock);
             command.NewTimer.millis+=Date.now(); //Server just supplies how much time is left on timer. Always need to add current millis.
             new_full_timer_from_timer(command.NewTimer,timers);
         }
 
         if(command.ShowSlideshow)
         {
-            active_tab_props=slideshow;
+            set_manual_tab(slideshow);
         }
     }
 
@@ -489,6 +490,7 @@
     function update_time()
     {
         time=new Date();
+        //console.debug("Time:",time);
         update_time_id=setTimeout(update_time,1000);
     }
 
@@ -532,7 +534,6 @@
         {
             clearTimeout(update_announcement_id);
             update_announcement_id=undefined;
-            console.info("Clearing timeout.",update_announcement_id);
         }
     }
 
@@ -581,6 +582,7 @@
                     }
                     if(timeout<TIMER_NOTIFICATION_PERIOD) //Don't schedule an announcement too far in advance.
                     {
+                        console.info("Scheduling announcement.");
                         update_announcement_id=setTimeout(timer_finished_announcement,timeout+10);
                     }
                 }
@@ -594,8 +596,9 @@
         $effect(
             ()=>{
                 //When time or timers changes, update extended states and check for expired timers.
+                console.info("Updating extended states.");
                 update_extended_states(time, timers);
-                monitor_expired_timers();
+                setTimeout(monitor_expired_timers); //Use setTimeout to avoid triggering this effect again.
             }
         );
     }
