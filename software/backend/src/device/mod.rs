@@ -81,3 +81,12 @@ pub(crate) fn set_screen_state(screen_on:bool, kiosk_uid:&u64)->Result<(),Box<dy
 
     Ok(())
 }
+
+//Might use command:
+//nmcli -f IN-USE,SIGNAL device wifi | grep '*'
+//To get wifi signal quality and put it on the display.
+//Returns
+//*            57
+//Can get number back and put it on screen
+
+//CPU utilization too?
