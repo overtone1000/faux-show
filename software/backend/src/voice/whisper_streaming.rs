@@ -208,7 +208,8 @@ async fn whisper_client_loop<T>(
         //audio_format: "int16".to_string()
         audio_format: "float32".to_string(),
         word_timestamps: true,
-        hotwords: voice_command_list.get_hotwords()
+        //hotwords: voice_command_list.get_hotwords() //Don't use hotwords, this seems to make function worse.
+        hotwords: "".to_string()
     };
     
     println!("whisper_streaming.rs: {:?}",livekit_config);
