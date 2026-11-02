@@ -13,9 +13,10 @@ const AUDIO_BUFFER_MULTIPLE:usize=2; //risk of stack overflow here, keep this lo
 const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 const CHUNK_BUFFER_MULTIPLE:usize=5;
 
-const THRESHOLD:f32=0.5;
 //const WAKEWORD_ONNX:&str="hey_livekit";
-const WAKEWORD_ONNX:&str="faux_show_v2";
+//const WAKEWORD_ONNX:&str="faux_show_v2"; const THRESHOLD:f32=0.5;
+const WAKEWORD_ONNX:&str="hey_faux_show_v1"; const THRESHOLD:f32=0.58;
+
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 

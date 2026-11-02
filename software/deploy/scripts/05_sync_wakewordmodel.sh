@@ -19,5 +19,5 @@ rsync \
     --recursive \
     --progress \
     --delete \
-    ./voice_control_examples/livekit-wakeword-minimal-example/faux_show_v2.onnx \
+    ./voice_control_examples/livekit-wakeword-minimal-example/hey_faux_show_v1.onnx \
     $SSH_DEST:$REMOTE_DIR
