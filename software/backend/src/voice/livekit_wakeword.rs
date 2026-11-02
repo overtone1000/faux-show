@@ -74,7 +74,7 @@ async fn wakeword_listener_loop(
                             }
                             else
                             {
-                                println!("No detection (score {}, needs {})", score, wakeword_threshold)
+                                //println!("No detection (score {}, needs {})", score, wakeword_threshold)
                             }
                         }
                     },
