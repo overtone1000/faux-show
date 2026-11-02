@@ -484,6 +484,7 @@ async fn voice_command_listener(
     let handler_function = {   
         let stop_whisper_clone = stop_whisper.clone();   
         let spoke_clone=spoke.clone();
+        let voice_command_list_clone=voice_command_list.clone();
 
         move|message:LivekitTranscriptionMessage|{
             match message.message
@@ -522,7 +523,7 @@ async fn voice_command_listener(
 
                     spoke_clone.send_external_command(Command::VoiceControlCurrentStream(full_transcription));
 
-                    let finished=voice_command_list.check_for_match_and_run_best_match(&segments, &spoke_clone);
+                    let finished=voice_command_list_clone.check_for_match_and_run_best_match(&segments, &spoke_clone);
                     if finished
                     {
                         //If there is a match (check returns false), stop the whisper stream
@@ -544,7 +545,8 @@ async fn voice_command_listener(
         &url,
         voice_control_state_receiver,
         whisper_websocket_message_receiver,
-        handler_function
+        handler_function,
+        voice_command_list
     );
 
     spoke.send_external_command(Command::SetVoiceControlState(VoiceControlState::ListeningForWakeword));

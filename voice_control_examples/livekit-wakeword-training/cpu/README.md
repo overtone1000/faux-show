@@ -33,3 +33,5 @@ Depending on what changed, it may be much faster to run training step-by-step
     livekit-wakeword export configs/prod.yaml    # Export to ONNX (default)
     livekit-wakeword eval configs/prod.yaml      # Evaluate model (DET curve, AUT, FPPH)
 ```
+
+Don't forget to check the eval output (especially the png) to get optimal threshold!

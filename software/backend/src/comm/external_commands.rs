@@ -93,6 +93,7 @@ pub enum Command
     AcknowledgeAlarms(bool), //Acknowledge alarms
     VoiceControlOptions(VoiceCommandList),
     VoiceControlCurrentStream(String),
+    ShowSlideshow(bool),
     NewTimer(Timer)
 }
 

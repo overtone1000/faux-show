@@ -68,6 +68,9 @@ impl ExternalService {
             Command::VoiceControlCurrentStream(_) => {
                 eprintln!("Invalid command.");
             },
+            Command::ShowSlideshow(_) => {
+                eprintln!("Invalid command.");
+            },
         }
 
         Ok(())

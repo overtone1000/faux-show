@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{net::TcpStream, sync::{Mutex, mpsc, oneshot, watch}};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
-use crate::voice::audio_stream::WakewordWhisperState;
+use crate::voice::{audio_stream::WakewordWhisperState, voice_command::VoiceCommandList};
 
 #[derive(Serialize,Debug)]
 struct LivekitConfig
@@ -147,7 +147,8 @@ pub async fn run_whisper_client<T>(
     url:&str,
     mut whisper_client_control_receiver:watch::Receiver<WakewordWhisperState>,
     mut websocket_message_receiver:mpsc::Receiver<Message>,
-    mut handler_function:T
+    mut handler_function:T,
+    voice_command_list:VoiceCommandList
 )
     where T:FnMut(LivekitTranscriptionMessage)->()
 {
@@ -167,7 +168,8 @@ pub async fn run_whisper_client<T>(
             url,
             &mut whisper_client_control_receiver,
             &mut websocket_message_receiver,
-            &mut handler_function
+            &mut handler_function,
+            &voice_command_list
         );
         
         tokio::join!(handle);
@@ -179,7 +181,8 @@ async fn whisper_client_loop<T>(
     url:&str,
     whisper_client_control_receiver:&mut watch::Receiver<WakewordWhisperState>,
     websocket_message_receiver:&mut mpsc::Receiver<Message>,
-    handler_function:&mut T
+    handler_function:&mut T,
+    voice_command_list:&VoiceCommandList
 )
     where T:FnMut(LivekitTranscriptionMessage)->()
 {
@@ -205,7 +208,7 @@ async fn whisper_client_loop<T>(
         //audio_format: "int16".to_string()
         audio_format: "float32".to_string(),
         word_timestamps: true,
-        hotwords: "".to_string() //"supercalafragalisticexpialadocious,lymphangioleiomyomatosis".to_string()
+        hotwords: voice_command_list.get_hotwords()
     };
     
     println!("whisper_streaming.rs: {:?}",livekit_config);

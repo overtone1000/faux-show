@@ -4,6 +4,13 @@ use text2num::find_numbers;
 
 use crate::voice::whisper_streaming::{LivekitTranscriptionSegment, LivekitTranscriptionWord};
 
+pub(crate) const HOUR:&str = "hour";
+pub(crate) const HOURS:&str = "hours";
+pub(crate) const MINUTE:&str = "minute";
+pub(crate) const MINUTES:&str = "minutes";
+pub(crate) const SECOND:&str = "second";
+pub(crate) const SECONDS:&str = "seconds";
+
 pub fn clean_tsword(tsword:&LivekitTranscriptionWord)->String
 {
     tsword.word.to_lowercase().trim().trim_matches(['?','!','.',',',';']).to_string()
@@ -122,13 +129,6 @@ pub struct Timer
 }
 pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
 {
-    let hour = &"hour".to_string();
-    let hours = &"hours".to_string();
-    let minute = &"minute".to_string();
-    let minutes = &"minutes".to_string();
-    let second = &"second".to_string();
-    let seconds = &"seconds".to_string();
-
     let millis_per_second = 1000.0;
     let millis_per_minute = millis_per_second*60.0;
     let millis_per_hour= millis_per_minute*60.0;
@@ -244,15 +244,15 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
 
         println!("text_manip.rs: subvec {:?}",subvec);
 
-        if subvec.contains(hour) || subvec.contains(hours)
+        if subvec.contains(&HOUR.to_string()) || subvec.contains(&HOURS.to_string())
         {
             millis+=occurence.value*millis_per_hour;
         }
-        else if subvec.contains(minute) || subvec.contains(minutes)
+        else if subvec.contains(&MINUTE.to_string()) || subvec.contains(&MINUTES.to_string())
         {
             millis+=occurence.value*millis_per_minute;
         }
-        else if subvec.contains(second) || subvec.contains(seconds)
+        else if subvec.contains(&SECOND.to_string()) || subvec.contains(&SECONDS.to_string())
         {
             millis+=occurence.value*millis_per_second;
         }

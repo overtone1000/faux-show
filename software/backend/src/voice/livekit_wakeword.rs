@@ -4,9 +4,11 @@ use livekit_wakeword::{SAMPLE_RATE, wakeword::WakeWordModel};
 
 use tokio::sync::{mpsc, watch};
 
-use crate::voice::audio_stream::CHUNK_SIZE;
+use crate::voice::{audio_stream::CHUNK_SIZE, voice_command::VoiceCommandList};
 
-const THRESHOLD:f32=0.89;
+//const THRESHOLD:f32=0.89;
+//Analysis says optimal threshold is 0.7.
+const THRESHOLD:f32=0.7;
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 

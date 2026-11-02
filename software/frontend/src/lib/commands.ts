@@ -38,7 +38,7 @@ export type VoiceControlAction =
 
 export type GenericVoiceControlOption =
 {
-    mode:VoiceControlMode|"Timer",
+    mode:VoiceControlMode|"Timer"|"Slideshow",
     action?:VoiceControlAction
 }
 
@@ -55,5 +55,6 @@ export type Command = {
     AcknowledgeAlarms?:boolean,
     VoiceControlOptions?:VoiceControlOptions
     VoiceControlCurrentStream?:String,
-    NewTimer?:Timer
+    NewTimer?:Timer,
+    ShowSlideshow?:boolean
 }

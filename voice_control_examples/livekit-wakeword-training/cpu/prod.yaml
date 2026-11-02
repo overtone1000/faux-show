@@ -5,7 +5,7 @@
 model_name: faux_show
 
 # Wake word phrases to detect (include spelling variations)
-target_phrases: ["foe show", "fuh show"]
+target_phrases: ["hey foe show", "hay fuh show", "hey fuh show", "hay foe show"]
 
 # ============================================================================
 # Data Generation
@@ -29,11 +29,17 @@ tts_batch_size: 50
 # Suggestion: add words that sound like your wake word, common misheard phrases
 custom_negative_phrases:
   # Bare wake word without prefix — most common false trigger
+  - "foe show"
+  - "fuh show"
   - "show"
+  - "foe"
+  - "hay"
+  - "hay for"
+  - "hey foe"
   # Phonetically similar prefixes
-  - "for shoe"
-  - "far tow"
-  - "oh go"
+  - "hi for shoe"
+  - "ho far tow"
+  - "oh oh go"
   - "low shower"
 
 # ============================================================================

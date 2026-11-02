@@ -2,15 +2,20 @@ use std::thread::current;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{comm::{CommunicationSpoke, external_commands::{AutoTabConfig, Command}}, voice::{text_manip::{MatchResult, check_for_match_string, extract_timer_init}, whisper_streaming::{LivekitTranscriptionSegment, LivekitTranscriptionWord}}};
+use crate::{comm::{CommunicationSpoke, external_commands::{AutoTabConfig, Command}}, voice::{text_manip::{HOUR, HOURS, MINUTE, MINUTES, SECOND, SECONDS, MatchResult, check_for_match_string, extract_timer_init}, whisper_streaming::{LivekitTranscriptionSegment, LivekitTranscriptionWord}}};
 
 
 #[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
 pub enum VoiceCommandMode
 {
     Contains(String),
-    Timer
+    Timer,
+    Slideshow
 }
+
+pub(crate) const TIMER_START:&str="timer";
+pub(crate) const TIMER_END:&str="engage";
+pub(crate) const SLIDESHOW:&str="slideshow";
 
 #[derive(Deserialize,Serialize, PartialEq, Eq, Debug, Clone)]
 pub enum VoiceCommandAction
@@ -32,6 +37,50 @@ pub struct VoiceCommandList{
 }
 
 impl VoiceCommandList {
+
+    pub fn get_hotwords(&self)->String
+    {
+        let mut retval="".to_string();
+        for vc in self.commands.iter()
+        {
+            match &vc.mode
+            {
+                VoiceCommandMode::Contains(matchwords) => {
+                    for word in matchwords.split(" ")
+                    {
+                        retval+=word;
+                        retval+=",";
+                    }
+                },
+                VoiceCommandMode::Timer => {
+                    retval+=TIMER_START;
+                    retval+=",";
+                    retval+=TIMER_END;
+                    retval+=",";
+                    retval+=HOUR;
+                    retval+=",";
+                    retval+=HOURS;
+                    retval+=",";
+                    retval+=MINUTE;
+                    retval+=",";
+                    retval+=MINUTES;
+                    retval+=",";
+                    retval+=SECOND;
+                    retval+=",";
+                    retval+=SECONDS;
+                    retval+=",";
+                },
+                VoiceCommandMode::Slideshow => {
+                    retval+=SLIDESHOW;
+                    retval+=",";
+                }
+            };
+        }
+        retval=retval.trim_matches([',',' ']).to_lowercase().to_string();
+        println!("voice_command.rs: Hotwords are: {}",retval);
+        retval
+    }
+
     pub fn check_for_match_and_run_best_match(
         &self,
         segments:&Vec<LivekitTranscriptionSegment>,
@@ -96,6 +145,9 @@ impl VoiceCommand
                     None=>false
                 }
             },
+            VoiceCommandMode::Slideshow => {
+                spoke.send_external_command(Command::ShowSlideshow(true))
+            },
         }
     }
 }
@@ -114,13 +166,16 @@ impl VoiceCommandMode
             VoiceCommandMode::Timer => {
                 println!("voice_command.rs: Checking for timer match.");
                 //Command is "timer $NAME blah hours blah minutes blah seconds engage"
-                if check_for_match_string("engage".to_string(),segments).is_some()
+                if check_for_match_string(TIMER_END.to_string(),segments).is_some()
                 {
-                    check_for_match_string("timer".to_string() ,segments)
+                    check_for_match_string(TIMER_START.to_string() ,segments)
                 }
                 else {
                     None
                 }
+            },
+            VoiceCommandMode::Slideshow => {
+                check_for_match_string(SLIDESHOW.to_string(),segments)
             },
         }
     }
