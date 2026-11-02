@@ -19,6 +19,7 @@ const MQTT_IP_ENV_KEY:&str="MQTT_IP";
 
 const WHISPER_SERVER_URL_KEY:&str="WHISPER_SERVER";
 const WAKEWORD_ONNX_FILE_KEY:&str="WAKEWORD_ONNX_FILE";
+const WAKEWORD_THRESHOLD_KEY:&str="WAKEWORD_THRESHOLD";
 
 const PROD_INTERNAL_SERVICE_DIR:&str="/var/www/internal";
 const PROD_CONFIG_DIR:&str="/var/www/config";
@@ -165,6 +166,24 @@ async fn main() {
             return;
         }
     };
+
+    let wakeword_threshold:f32 = match std::env::var(WAKEWORD_THRESHOLD_KEY)
+    {
+        Ok(val)=>{
+            match val.parse()
+            {
+                Ok(res)=>res,
+                Err(e)=>{
+                    eprintln!("{:?}",e);
+                    0.5
+                }
+            }
+        },
+        Err(_)=>{
+            eprintln!("Must provide wakeword threshold as an environment variable.");
+            return;
+        }
+    };
     
     let mqtt_ip:String = match std::env::var(MQTT_IP_ENV_KEY)
     {
@@ -207,7 +226,8 @@ async fn main() {
                 has_key,
                 has_url,
                 whisper_server_url,
-                wakeword_onnx_file
+                wakeword_onnx_file,
+                wakeword_threshold
             )
         },
         false=>{
@@ -224,7 +244,8 @@ async fn main() {
                 has_key,
                 has_url,
                 whisper_server_url,
-                wakeword_onnx_file
+                wakeword_onnx_file,
+                wakeword_threshold
             )
         }
     };

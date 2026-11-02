@@ -7,8 +7,8 @@ use tokio::sync::{mpsc, watch};
 use crate::voice::{audio_stream::CHUNK_SIZE, voice_command::VoiceCommandList};
 
 //const THRESHOLD:f32=0.89;
-//Analysis says optimal threshold is 0.7.
-const THRESHOLD:f32=0.7;
+//Analysis says optimal threshold is 0.7 fore faux_show_v2 and 0.58 for hey_faux_show_v1
+//const THRESHOLD:f32=0.7;
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 
@@ -18,14 +18,16 @@ const THRESHOLD:f32=0.7;
 pub async fn run_wakeword_listener(
     wakeword_onnx_file:String,
     mut chunk_receiver:mpsc::Receiver<Box<[i16;CHUNK_SIZE]>>,
-    last_detected_wakeword_sender:watch::Sender<Option<SystemTime>>
+    last_detected_wakeword_sender:watch::Sender<Option<SystemTime>>,
+    wakeword_threshold:f32
 )
 {
     loop {
         let handle=wakeword_listener_loop(
             &wakeword_onnx_file, 
             &mut chunk_receiver,
-            &last_detected_wakeword_sender
+            &last_detected_wakeword_sender,
+            wakeword_threshold
         );
         tokio::join!(handle);
         println!("Wakeword loop returned. Restarting in one second.");
@@ -36,7 +38,8 @@ pub async fn run_wakeword_listener(
 async fn wakeword_listener_loop(
     wakeword_onnx_file:&str,
     chunk_receiver:&mut mpsc::Receiver<Box<[i16;CHUNK_SIZE]>>,
-    last_detected_wakeword_sender:&watch::Sender<Option<SystemTime>>
+    last_detected_wakeword_sender:&watch::Sender<Option<SystemTime>>,
+    wakeword_threshold:f32
 ) {
     
     let mut model = match WakeWordModel::new(
@@ -60,7 +63,7 @@ async fn wakeword_listener_loop(
                     Ok(res) => {
                         for (wakeword, score) in res
                         {
-                            if score>THRESHOLD
+                            if score>wakeword_threshold
                             {
                                 match last_detected_wakeword_sender.send(Some(SystemTime::now()))
                                 {
@@ -71,7 +74,7 @@ async fn wakeword_listener_loop(
                             }
                             else
                             {
-                                //println!("No detection (score {})", score)
+                                println!("No detection (score {}, needs {})", score, wakeword_threshold)
                             }
                         }
                     },

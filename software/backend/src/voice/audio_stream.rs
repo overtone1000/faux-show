@@ -167,7 +167,8 @@ async fn run_voice_command_listener(
                     params.wakeword_onnx_file.clone(),
                     params.whisper_server_url.clone(),
                     get_voice_command_json_file_path(&params),
-                    spokeclone
+                    spokeclone,
+                    params.wakeword_threshold.clone()
                 ).await
             }
             else
@@ -231,7 +232,8 @@ async fn voice_command_listener(
     wakeword_onnx_file:String,
     url:String,
     voice_config_file:String,
-    spoke:CommunicationSpoke
+    spoke:CommunicationSpoke,
+    wakeword_threshold:f32
 )->Result<(), Box<VoiceError>>//Box<dyn std::error::Error + Send + Sync>>
 {
     //senders and receivers
@@ -538,7 +540,8 @@ async fn voice_command_listener(
     let wakeword_handle=run_wakeword_listener(
         wakeword_onnx_file.to_string(),
         wakeword_chunk_receiver,
-        last_detected_wakeword_sender
+        last_detected_wakeword_sender,
+        wakeword_threshold
     );
     
     let whisper_handle=run_whisper_client(

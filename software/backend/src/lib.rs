@@ -34,7 +34,8 @@ pub struct InitializationParameters
     has_key:String,
     ha_url:String,
     whisper_server_url:String,
-    wakeword_onnx_file:String
+    wakeword_onnx_file:String,
+    wakeword_threshold:f32
 }
 
 const _: () = {
@@ -65,7 +66,8 @@ impl InitializationParameters
         has_key:String,
         ha_url:String,
         whisper_server_url:String,
-        wakeword_onnx_file:String
+        wakeword_onnx_file:String,
+        wakeword_threshold:f32
     )->InitializationParameters
     {
         InitializationParameters { 
@@ -80,7 +82,8 @@ impl InitializationParameters
             has_key,
             ha_url,
             whisper_server_url,
-            wakeword_onnx_file
+            wakeword_onnx_file,
+            wakeword_threshold
         }
     }
 }
