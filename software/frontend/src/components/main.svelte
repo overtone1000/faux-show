@@ -83,6 +83,56 @@
     let main:Main|undefined = $state(undefined);
     let display_on:boolean = $state(true);
 
+    let active_tab_props=$state<TabProps|null>(null);
+
+    $effect(()=>{
+        active_tab_props?.action();
+    });
+
+    let allow_grow_state = $state(true);
+    let toggle_grow = ()=>{
+        allow_grow_state=false;
+        setTimeout(()=>{
+            allow_grow_state=true;
+        },5000);
+    }
+    let grow_state = $derived.by(
+        ()=>{
+            if(allow_grow_state && main?.component_meta===ComponentType.slideshow)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    );
+    
+    let tab_bar_styles = $derived.by(
+        ()=>{
+            if(grow_state)
+            {
+                return `
+                    height:0mm;
+                    opacity:0.0;         
+                    transition: opacity 2s ease,
+                                height 2s ease 2s;";
+                `;
+            }
+            else
+            {
+                /*Make height absolute for touch device*/
+                return `
+                    height:16mm;
+                    opacity:1.0;
+                    transition: opacity 2s ease,
+                                height 2s ease;
+                `;
+            }
+        }
+    );
+
     //const timers:Timer[] = $state([]);
 
     let tabs:TabProps[]|undefined = $state(undefined);
@@ -123,12 +173,6 @@
 
     let manual_tab_props=$state<TabProps|null>(null);
     let auto_tab_config=$state<AutoTab|null>(null);
-
-    let active_tab_props=$state<TabProps|null>(null);
-
-    $effect(()=>{
-        active_tab_props?.action();
-    });
         
     let auto_tabs:Set<AutoTabEntry>=new Set();
 
@@ -295,6 +339,11 @@
         {
             command.NewTimer.millis+=Date.now(); //Server just supplies how much time is left on timer. Always need to add current millis.
             new_full_timer_from_timer(command.NewTimer,timers);
+        }
+
+        if(command.ShowSlideshow)
+        {
+            active_tab_props=slideshow;
         }
     }
 
@@ -586,6 +635,10 @@
                 {
                     retval.push("Start a timer by saying, \"Timer NAME, # hours, # minutes, # seconds. Engage.\"")
                 }
+                else if(vco.mode === "Slideshow")
+                {
+                    retval.push("slideshow: Show photo slideshow")
+                }
                 else
                 {                   
                     let this_row="";
@@ -613,7 +666,7 @@
 </script>
 
 <div class="whole_display">
-    <div class="tab-row">
+    <div class="tab-row" style={tab_bar_styles}>
         {#each tabs as tab}
             <IconTab --right_margin="4px" props={tab}/>
         {/each}
@@ -640,7 +693,7 @@
     </div>
     <div class="main_outer">
         {#if display_on && main !== undefined}
-            <div class="main">
+            <div class="main" role="main" onmousemove={toggle_grow}>
                 {#if main.field === MainField.iframe && main.iframe_meta !== undefined}
                     <iframe class="full-size" src={main.iframe_meta.url} title={main.iframe_meta.title}>
                         <p>iframe unsupported</p>
@@ -706,8 +759,6 @@
     .tab-row
     {
         width: 100%;
-        /*Make height absolute for touch device*/
-        height: 16mm;
         display:flex;
         flex-direction: row;
     }
