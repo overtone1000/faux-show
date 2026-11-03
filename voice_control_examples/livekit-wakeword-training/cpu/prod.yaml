@@ -5,7 +5,7 @@
 model_name: faux_show
 
 # Wake word phrases to detect (include spelling variations)
-target_phrases: ["hey foe show", "hay fuh show", "hey fuh show", "hay foe show"]
+target_phrases: ["hey foe show", "hay foe show"]
 
 # ============================================================================
 # Data Generation
@@ -32,16 +32,10 @@ custom_negative_phrases:
   - "foe show"
   - "fuh show"
   - "show"
-  - "foe"
-  - "hay"
-  - "hay for"
-  - "hey foe"
   # Phonetically similar prefixes
   - "hi for shoe"
   - "ho far tow"
-  - "oh oh go"
-  - "low shower"
-
+  
 # ============================================================================
 # TTS Parameters (VITS + SLERP speaker blending)
 # ============================================================================

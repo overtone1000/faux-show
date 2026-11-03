@@ -4,13 +4,24 @@ podman build -t livekit-wakeword-trainer .
 ```
 
 
+NEVER UPDATED CONFIGS DIRECTORY, PROD.YAML hasn't been getting updated!!!
+
 ## Run container
 
+Test
 ```
 podman run -it \
     --mount=type=volume,source=livekit_data,dst=/data \
-    --mount=type=bind,source=/home/tyler/livekit_output,dst=/output \
-    livekit-wakeword-trainer /bin/bash
+    --mount=type=bind,source=/home/tyler/livekit/livekit_output_test,dst=/output \
+    livekit-wakeword-trainer bin/bash
+```
+
+Production
+```
+podman run -it \
+    --mount=type=volume,source=livekit_data,dst=/data \
+    --mount=type=bind,source=/home/tyler/livekit/livekit_output,dst=/output \
+    livekit-wakeword-trainer bin/bash
 ```
 
 ## Config and Training

@@ -44,7 +44,8 @@ ssh -t $SSH_DEST \
     && echo WHISPER_SERVER=$WHISPER_SERVER | sudo tee -a $ENVIRONMENT_FILE \
     && echo WAKEWORD_ONNX_FILE=$WAKEWORD_ONNX_FILE | sudo tee -a $ENVIRONMENT_FILE \
     && echo HAS_URL=$HAS_URL | sudo tee -a $ENVIRONMENT_FILE \
-    && echo MQTT_IP=$MQTT_IP | sudo tee -a $ENVIRONMENT_FILE
+    && echo MQTT_IP=$MQTT_IP | sudo tee -a $ENVIRONMENT_FILE \
+    && echo WAKEWORD_THRESHOLD=$WAKEWORD_THRESHOLD | sudo tee -a $ENVIRONMENT_FILE
     "
 
 #Copy frontend to device
