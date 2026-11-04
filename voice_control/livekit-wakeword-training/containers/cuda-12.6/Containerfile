@@ -27,5 +27,3 @@ RUN uv pip install --verbose torch torchaudio --torch-backend=cu126 --reinstall
 
 #Trying to switch to CUDA 12.6
 RUN uv pip install --verbose onnxruntime-gpu --reinstall --extra-index-url https://visualstudio.com
-
-COPY ../prod.yaml configs/prod.yaml

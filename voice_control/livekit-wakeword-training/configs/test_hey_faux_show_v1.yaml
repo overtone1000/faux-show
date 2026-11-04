@@ -2,10 +2,10 @@
 #
 # Multilingual wake words: you must use tts_backend: voxcpm — Piper cannot synthesize
 # arbitrary languages. See configs/prod_voxcpm.yaml (Chinese example: 你好 livekit / nihao livekit).
-model_name: faux_show
+model_name: test_hey_faux_show_v1
 
 # Wake word phrases to detect (include spelling variations)
-target_phrases: ["hey foe show", "hay foe show"]
+target_phrases: ["hey foe show"]
 
 # ============================================================================
 # Data Generation
@@ -13,28 +13,26 @@ target_phrases: ["hey foe show", "hay foe show"]
 
 # Training samples per class (positive + negative)
 # Suggestion: 5000-10000 for quick experiments, 20000+ for production
-n_samples: 25000
+n_samples: 5000
 
 # Validation samples per class
 # Suggestion: 10-20% of n_samples
-n_samples_val: 5000
-n_background_samples: 2000
+n_samples_val: 1000
+n_background_samples: 2500
 n_background_samples_val: 500
 
 # VITS TTS batch size (higher = faster, but more VRAM)
 # Suggestion: 50 for 8GB GPU, 100+ for 16GB+
-tts_batch_size: 50
+tts_batch_size: 10
 
 # Adversarial negatives — phonetically similar phrases that should NOT trigger
 # Suggestion: add words that sound like your wake word, common misheard phrases
 custom_negative_phrases:
   # Bare wake word without prefix — most common false trigger
   - "foe show"
-  - "fuh show"
-  - "show"
   # Phonetically similar prefixes
-  - "hi for shoe"
-  - "ho far tow"
+  - "hey for sure"
+  - "hey far go"
   
 # ============================================================================
 # TTS Parameters (VITS + SLERP speaker blending)

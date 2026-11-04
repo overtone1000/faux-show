@@ -7,16 +7,6 @@ This was an attempt to use a very old GPU to accelerate training. After working 
 podman build -t livekit-wakeword-trainer-v2 .
 ```
 
-## Run container
-
-```
-podman run -it \
-    --mount=type=volume,source=livekit-v2_data,dst=/data \
-    --mount=type=bind,source=/home/tyler/livekit-v2_output,dst=/output \
-    --device nvidia.com/gpu=all \
-    livekit-wakeword-trainer-v2 /bin/bash
-```
-
 ## GPU Config
 Observe GPU utilization with
 `nix-shell -p nvitop --run nvitop`
