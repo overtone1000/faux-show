@@ -149,7 +149,25 @@ in
     user="kiosk";
   };
 
-  
+  #Allow kiosk user to restart cage for watchdog purposes
+  security.polkit.extraConfig = ''
+    polkit.addRule(
+      function(action, subject)
+      {
+        polkit.log("Custom rule...");
+        if(
+          action.id === "org.freedesktop.systemd1.manage-units" &&
+          action.lookup("unit") === "cage-tty1.service"
+        )
+        {
+            var verb = action.lookup("verb");
+            if (verb === "restart" || verb === "start" || verb === "stop") {
+              return polkit.Result.YES;
+            }
+        }
+      }
+    );
+  '';
 
   #Not needed, running quadlets as root.
   #users.users.root.linger=true; #Allows execution of podman commands when su from another user. Also allows user-scoped quadlets to start on boot.
@@ -173,6 +191,7 @@ in
       sleep 5
     '';
     serviceConfig = {
+     User = "kiosk";
     #  InaccessiblePaths = "/run/current-system/sw/share/icons"; #/usr/share/icons doesn't seem to exist on this nix
     #  Environment = "XCURSOR_PATH=${transparent-cursor}/Transparent";
       Environment = "GTK_THEME=Adwaita:dark";

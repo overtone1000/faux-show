@@ -6,7 +6,7 @@ use hyper_services::{
 
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{comm::{CommunicationSpoke, external_commands::Command}, device::set_screen_state};
+use crate::{comm::{CommunicationSpoke, external_commands::Command}, device::screen_state::set_screen_state};
 
 
 #[derive(Clone)]

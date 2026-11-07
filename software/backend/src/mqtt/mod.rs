@@ -68,7 +68,7 @@ fn device_awake_switch(
         let notification:InternalServiceNotification=InternalServiceNotification::Sleep(!state.as_bool()); //Sleep is opposite of switch state!
         spoke.notify_of_state_change(notification);
 
-        match crate::device::set_screen_state(state.as_bool(),&kiosk_uid)
+        match crate::device::screen_state::set_screen_state(state.as_bool(),&kiosk_uid)
         {
             Ok(_)=>Some(state),
             Err(e)=>{
