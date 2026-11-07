@@ -1,7 +1,7 @@
 use std::{error::Error, process::ExitStatus};
 
 
-pub(crate) fn watchdog()->Result<(),Box<dyn Error>>
+pub(crate) fn restart_cage_tty1()->Result<(),Box<dyn Error>>
 {
     use std::process::Command;
 
@@ -54,6 +54,6 @@ mod tests {
 
     #[test]
     fn test_watchdog_command() {
-        watchdog().expect("Should return ok");
+        restart_cage_tty1().expect("Should return ok");
     }
 }
