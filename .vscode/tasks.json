@@ -91,6 +91,22 @@
         },
         {
             "type": "shell",
+            "command": "cargo run --release",
+            "group": "build",
+            "label": "Run Livekit Wakeword Example in Release Mode",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "options": {
+                "cwd":"voice_control/livekit-wakeword-minimal-example",
+                "env": {
+                    "WAKEWORD_ONNX_FILE":"/home/tyler/livekit/livekit_output/test_hey_faux_show_v1/test_hey_faux_show_v1.onnx",
+                    "WAKEWORD_THRESHOLD":"0.50",
+                }
+            }
+        },
+        {
+            "type": "shell",
             "command": "nix-shell build.nix --run \"cargo build --release --target aarch64-unknown-linux-gnu\"",
             "group": "build",
             "label": "Cross-compile release",

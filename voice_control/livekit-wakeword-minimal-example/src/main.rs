@@ -13,15 +13,43 @@ const AUDIO_BUFFER_MULTIPLE:usize=2; //risk of stack overflow here, keep this lo
 const AUDIO_BUFFER_SIZE:usize=AUDIO_BUFFER_MULTIPLE*CHUNK_SIZE;
 const CHUNK_BUFFER_MULTIPLE:usize=5;
 
-//const WAKEWORD_ONNX:&str="hey_livekit";
-//const WAKEWORD_ONNX:&str="faux_show_v2"; const THRESHOLD:f32=0.5;
-const WAKEWORD_ONNX:&str="hey_faux_show_v1"; const THRESHOLD:f32=0.58;
-
+const WAKEWORD_ONNX_FILE_KEY:&str="WAKEWORD_ONNX_FILE";
+const WAKEWORD_THRESHOLD_KEY:&str="WAKEWORD_THRESHOLD";
 
 //Livekit wakeword *MUST* be run in release mode or it is very slow. It also uses quite a bit of CPU.
 
 #[tokio::main]
 async fn main() {
+
+
+    let wakeword_onnx_file:String = match std::env::var(WAKEWORD_ONNX_FILE_KEY)
+    {
+        Ok(val)=>{
+            val
+        },
+        Err(_)=>{
+            eprintln!("Must provide wakeword onnx file path as an environment variable.");
+            return;
+        }
+    };
+
+    let wakeword_threshold:f32 = match std::env::var(WAKEWORD_THRESHOLD_KEY)
+    {
+        Ok(val)=>{
+            match val.parse()
+            {
+                Ok(res)=>res,
+                Err(e)=>{
+                    eprintln!("{:?}",e);
+                    0.5
+                }
+            }
+        },
+        Err(_)=>{
+            eprintln!("Must provide wakeword threshold as an environment variable.");
+            return;
+        }
+    };
 
     let bits_per_sample_u32:u32 = BITS_PER_SAMPLE.try_into().expect("Should convert.");
     let sample_rate_u32:u32 = SAMPLE_RATE.try_into().expect("Should convert.");
@@ -56,7 +84,7 @@ async fn main() {
     };
 
     let mut model = WakeWordModel::new(
-        &["/home/tyler/repos/faux-show/experimental/voice_control/livekit-wakeword-minimal/".to_string() + WAKEWORD_ONNX + ".onnx"],
+        &[wakeword_onnx_file],
         SAMPLE_RATE.try_into().expect("Should convert."
     )).expect("model should start");
 
@@ -113,7 +141,7 @@ async fn main() {
                             Ok(res) => {
                                 for (wakeword, score) in res
                                 {
-                                    if score>THRESHOLD
+                                    if score>wakeword_threshold
                                     {
                                         println!("Detected {} at {:?} (score {})",wakeword, std::time::Instant::now(), score);
                                     }
