@@ -15,6 +15,7 @@ use hyper_services::service::spawn::ConnectionProperties;
 use hyper_services::service::stateful_service::StatefulService;
 
 use crate::comm::{CommunicationHub, CommunicationSpoke};
+use crate::device::watchdog::Watchdog;
 use crate::mqtt::MQTTConfiguration;
 use crate::services::external::rest_service::ExternalService;
 use crate::services::internal::InternalService;
@@ -104,6 +105,7 @@ pub async fn start_and_run(params:InitializationParameters) {
         
         let external_handler = ExternalService::new(&params.auth,&params.kiosk_uid.to_owned(),hub.spoke().clone());
         let external_service = StatefulService::create(external_handler);        
+        let watchdog = Watchdog::new();
         
         //Don't loop this. If the internal service goes down, need to rebuild entirely.
         let internal_service_future = {
@@ -114,8 +116,9 @@ pub async fn start_and_run(params:InitializationParameters) {
                     let internal_handler = InternalService::new(
                         &paramsclone,
                         std::sync::Arc::new(tokio::sync::Mutex::new(external_command_receiver)), //partial move of hub
-                        spokeclone
-                        //internal_service_notification_sender.clone()
+                        spokeclone,
+                        watchdog.get_notifier()
+                        //internal_service_notification_sender.clone(),
                     );
                     let internal_service= StatefulService::create(internal_handler);  
                     match internal_service.start(

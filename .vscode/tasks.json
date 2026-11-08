@@ -56,7 +56,7 @@
                     "HAS_KEY":"${input:has_key}",
                     "HAS_URL":"http://10.10.10.10:8123",
                     "WHISPER_SERVER":"ws://10.10.10.10:9092",
-                    "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/hey_faux_show_v1.onnx",
+                    "WAKEWORD_ONNX_FILE":"/home/tyler/livekit/livekit_output/test_hey_faux_show_v1/test_hey_faux_show_v1.onnx",
                     "WAKEWORD_THRESHOLD":"0.58",
                     "MQTT_IP":"10.10.10.10"
                 }
@@ -83,7 +83,7 @@
                     "HAS_KEY":"${input:has_key}",
                     "HAS_URL":"http://10.10.10.10:8123",
                     "WHISPER_SERVER":"ws://10.10.10.10:9092",
-                    "WAKEWORD_ONNX_FILE":"/home/tyler/repos/faux-show/voice_control_examples/livekit-wakeword-minimal-example/hey_faux_show_v1.onnx",
+                    "WAKEWORD_ONNX_FILE":"/home/tyler/livekit/livekit_output/test_hey_faux_show_v1/test_hey_faux_show_v1.onnx",
                     "WAKEWORD_THRESHOLD":"0.58",
                     "MQTT_IP":"10.10.10.10"
                 }

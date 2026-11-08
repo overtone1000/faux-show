@@ -1,7 +1,7 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, sync::Arc, thread::current, time::{Duration, Instant}};
+use std::{collections::{HashMap, HashSet, VecDeque}, sync::Arc, thread::current, time::{Duration, Instant, SystemTime}};
 
 use futures_util::stream::{SplitSink, SplitStream};
-use hyper::{HeaderMap, Method, Request, Response, body::Incoming, header, upgrade::Upgraded};
+use hyper::{HeaderMap, Method, Request, Response, body::{Bytes, Incoming}, header, upgrade::Upgraded};
 use hyper_services::{
     commons::HandlerResult, request_processing::get_request_body_as_string, response_building::{bad_request, box_existing_full, box_existing_response, bytes_to_boxed_body}, service::stateful_service::StatefulHandler
 };
@@ -16,7 +16,7 @@ use websocket::WebSocketStreamNext;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
-use crate::{InitializationParameters, comm::{CommunicationHub, CommunicationSpoke, external_commands::{Command, Initialization}, internal_notifications::InternalServiceNotification}, voice::{audio_stream::get_voice_command_json_file_path, voice_command::VoiceCommandList}};
+use crate::{InitializationParameters, comm::{CommunicationHub, CommunicationSpoke, external_commands::{Command, Initialization}, internal_notifications::InternalServiceNotification}, device::watchdog::{HEARTBEAT_INTERVAL, Watchdog, WatchdogNotifier}, voice::{audio_stream::get_voice_command_json_file_path, voice_command::VoiceCommandList}};
 
 
 const CONFIG_PREFACE:&str="/config";
@@ -25,14 +25,13 @@ const CONFIG_PREFACE:&str="/config";
 pub struct InternalService {
     initialization_parameters:InitializationParameters,
     external_command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
-    //internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>,
     spoke:CommunicationSpoke,
     sinks:Arc<Mutex<HashMap<u64,SplitSink<WebSocketStream<TokioIo<Upgraded>>,Message>>>>,
     sink_handler:Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     photoprism_key:String,
     has_key:String,
-    ha_url:String
-    //header_map:Option<HeaderMap>
+    ha_url:String,
+    watchdog_notifier:WatchdogNotifier
 }
 
 impl InternalService
@@ -41,12 +40,10 @@ impl InternalService
         initialization_parameters:&InitializationParameters,
         external_command_receiver:Arc<Mutex<UnboundedReceiver<Command>>>,
         //internal_service_notification_sender:broadcast::Sender<InternalServiceNotification>
-        spoke:CommunicationSpoke
+        spoke:CommunicationSpoke,
+        watchdog_notifier:WatchdogNotifier
     )->InternalService
-    {
-        //let mut header_map:HeaderMap=HeaderMap::new();
-        //header_map.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN,header::HeaderValue::from_static("*"));
-                        
+    {                        
         InternalService { 
             initialization_parameters: initialization_parameters.clone(),
             external_command_receiver,
@@ -56,8 +53,9 @@ impl InternalService
             sink_handler:Arc::new(Mutex::new(None)),
             photoprism_key:initialization_parameters.photoprism_key.to_string(),
             has_key:initialization_parameters.has_key.to_string(),
-            ha_url:initialization_parameters.ha_url.to_string()
-            //header_map:Some(header_map)
+            ha_url:initialization_parameters.ha_url.to_string(),
+            //header_map:Some(header_map),
+            watchdog_notifier
         }
     }
 
@@ -70,42 +68,62 @@ impl InternalService
         println!("internal/mod.rs: Starting websocket sink handler.");
         let mut external_command_receiver= external_command_receiver.lock().await;
 
-        loop {
-            match external_command_receiver.recv().await
+        let send_to_all_sinks = async |message:Message| {
+            let mut locked_sinks = sink.lock().await;
+            for (_key,sink) in &mut *locked_sinks
             {
-                Some(command)=>{
-                    match serde_json::to_string(&command)
-                    {
-                        Ok(command_as_string)=>{
-                            let mut locked_sinks = sink.lock().await;
-                            for (_key,sink) in &mut *locked_sinks
-                            {
-                                match sink.send(Message::text(command_as_string.clone())).await
-                                {
-                                    Ok(_)=>{
-                                        //println!("internal/mod.rs: Command sent via websocket.");
-                                    },
-                                    Err(e)=>{
-                                        eprintln!("internal/mod.rs: Websocket send error: {:?}",e);
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("internal/mod.rs: Couldn't deserialize command. {:?}",e);
-                        },
+                match sink.send(message.clone()).await
+                {
+                    Ok(_)=>{
+                        //println!("internal/mod.rs: Command sent via websocket.");
+                    },
+                    Err(e)=>{
+                        eprintln!("internal/mod.rs: Websocket send error: {:?}",e);
                     }
-                },
-                None=>{
-                    //stream has closed, exit
-                    println!("internal/mod.rs: Command receiver has closed. Closing sink handler.");
-                    return;
                 }
             }
+        };
+        
+        let heartbeat_future =
+            async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(HEARTBEAT_INTERVAL));
+                loop {
+                    interval.tick().await;
+                    send_to_all_sinks(Message::Ping(Bytes::new())).await;
+                }
+            };
+
+        let command_sender_future = async move {
+            loop {
+                match external_command_receiver.recv().await
+                {
+                    Some(command)=>
+                        match serde_json::to_string(&command)
+                        {
+                            Ok(command_as_string)=>{
+                                send_to_all_sinks(Message::text(command_as_string.clone())).await;
+                            }
+                            Err(e) => {
+                                eprintln!("internal/mod.rs: Couldn't deserialize command. {:?}",e);
+                            },
+                        },
+                    None=>{
+                        //stream has closed, exit
+                        println!("internal/mod.rs: Command receiver has closed. Closing sink handler.");
+                        return;
+                    }
+                }
+            }
+        };
+
+        tokio::select! {
+            _=heartbeat_future=>(),
+            _=command_sender_future=>(),
         }
+
     }
 
-    async fn handle_websocket_stream(stream:&mut SplitStream<WebSocketStream<TokioIo<Upgraded>>>)->()
+    async fn handle_websocket_stream(stream:&mut SplitStream<WebSocketStream<TokioIo<Upgraded>>>, notifier:WatchdogNotifier)->()
     {
         println!("internal/mod.rs: Starting websocket stream handler.");
         
@@ -115,6 +133,9 @@ impl InternalService
             match stream.next().await
             {
                 Some(stream_next)=>{
+                    //On any message received, notify watchdog
+                    notifier.notify_okay();
+
                     match stream_next {
                         Ok(stream_next)=>{
                             match stream_next {
@@ -209,6 +230,7 @@ impl InternalService
         self.spoke.notify_of_state_change(InternalServiceNotification::FrontendConnected(false));
     }
 
+
     async fn handle_websocket(self, websocket: HyperWebsocket) -> () {       
 
         println!("internal/mod.rs: Serving websocket");
@@ -225,12 +247,11 @@ impl InternalService
         //Send initialization on sink
         self.sink_initialization(&mut sink).await;
 
-        let external_command_receiver_clone = self.external_command_receiver.clone();
-
         //Add the sink to the sink vector. Make sure a sink handler is running. If it is, let it continue.
         let sink_key={
             let mut sinks = self.sinks.lock().await;
             let mut current_handler = self.sink_handler.lock().await;
+            let external_command_receiver_clone = self.external_command_receiver.clone();
 
             let mut sink_key=0u64;
             while sinks.contains_key(&sink_key)
@@ -250,18 +271,22 @@ impl InternalService
 
             sink_key
         };
-
-       match tokio::spawn(
+        
+        let notifier=self.watchdog_notifier.clone();
+        //let sink_clone=&sink;
+        let websocket_stream_future = tokio::spawn(
         async move {
-            Self::handle_websocket_stream(&mut stream).await
-        }).await
-       {
+            Self::handle_websocket_stream(&mut stream, notifier).await
+        });
+
+        match websocket_stream_future.await
+        {
             Ok(_)=>println!("internal/mod.rs: Websocket stream closed."),
             Err(e) => {
                 eprintln!("internal/mod.rs: Websocket stream error: {:?}",e);
                 return;
             },
-       }
+        }
 
        println!("internal/mod.rs: Closed websocket. Cleaning up sinks.");
 
