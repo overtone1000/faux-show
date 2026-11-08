@@ -197,9 +197,10 @@ pub fn extract_timer_init(match_result:MatchResult)->Option<Timer>
             for n in 0..occurrences.get(0).expect("Should exist.").start
             {
                 retval+=&cleaned_tokens.get(n).expect("Should exist.").word;
+                retval+=" ";
             }
 
-            retval
+            retval.trim().to_string()
         }
         else {
             "Unnamed Timer".to_string()
